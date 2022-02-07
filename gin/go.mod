@@ -1,4 +1,4 @@
-module github.com/goccha/stackdriver/gin
+module github.com/goccha/logging/gin
 
 go 1.17
 
