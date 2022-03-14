@@ -11,7 +11,8 @@ import (
 )
 
 func init() {
-	SetGlobalOut(os.Stdout)
+	SetGlobalOut(getWriter())
+	SetGlobalErr(getErrorWriter())
 	level, ok := os.LookupEnv("LOG_LEVEL")
 	if !ok {
 		level = "debug"
@@ -41,7 +42,7 @@ func SetGlobalOut(w io.Writer) {
 	log.Logger = zerolog.New(w).With().Timestamp().Logger()
 }
 
-var errorLogger = zerolog.New(os.Stderr).With().Caller().Timestamp().Logger()
+var errorLogger zerolog.Logger
 
 func SetGlobalErr(w io.Writer) {
 	errorLogger = zerolog.New(w).With().Caller().Timestamp().Logger()
@@ -94,7 +95,7 @@ func Emergency(ctx context.Context, skip ...int) *zerolog.Event {
 }
 
 func skipLogger(logger zerolog.Logger, skip ...int) zerolog.Logger {
-	if skip != nil && len(skip) > 0 {
+	if len(skip) > 0 {
 		skipCount := zerolog.CallerSkipFrameCount + skip[0]
 		logger = zerolog.New(os.Stderr).With().CallerWithSkipFrameCount(skipCount).Timestamp().Logger()
 	}

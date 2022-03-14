@@ -110,6 +110,6 @@ func (o LogEntryOperation) MarshalZerologObject(e *zerolog.Event) {
 		e = e.Bool("first", *o.First)
 	}
 	if o.Last != nil {
-		e = e.Bool("last", *o.Last)
+		_ = e.Bool("last", *o.Last)
 	}
 }
