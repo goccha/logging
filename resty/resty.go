@@ -28,7 +28,7 @@ func RequestLogCallback(req *resty.RequestLog) error {
 	}
 	body.Dict("headers", headers)
 	if strings.HasPrefix(req.Body, "{") {
-		body.RawJSON("body", []byte(req.Body))
+		body.RawJSON("body", []byte(strings.ReplaceAll(req.Body, "\n", "")))
 	} else {
 		body.Str("body", req.Body)
 	}
@@ -44,7 +44,7 @@ func ResponseLogCallback(res *resty.ResponseLog) error {
 	}
 	body.Dict("headers", headers)
 	if strings.HasPrefix(res.Body, "{") {
-		body.RawJSON("body", []byte(res.Body))
+		body.RawJSON("body", []byte(strings.ReplaceAll(res.Body, "\n", "")))
 	} else {
 		body.Str("body", res.Body)
 	}
@@ -61,7 +61,12 @@ func (l *Logger) Warnf(format string, v ...interface{}) {
 	log.Warn(context.TODO()).Msgf("RESTY "+format, v...)
 }
 func (l *Logger) Debugf(format string, v ...interface{}) {
-	if !strings.HasPrefix(format, "\n==") {
-		log.Debug(context.TODO()).Msgf("RESTY "+format, v...)
+	if len(v) > 0 {
+		if str, ok := v[0].(string); ok {
+			if strings.HasPrefix(str, "\n==") {
+				return
+			}
+		}
 	}
+	log.Debug(context.TODO()).Msgf("RESTY "+format, v...)
 }
