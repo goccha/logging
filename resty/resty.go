@@ -32,7 +32,7 @@ func RequestLogCallback(req *resty.RequestLog) error {
 	} else {
 		body.Str("body", req.Body)
 	}
-	log.Debug(context.TODO()).Dict("request", body).Send()
+	log.Debug(context.TODO()).Str("client", "resty").Dict("request", body).Send()
 	return nil
 }
 
@@ -48,7 +48,7 @@ func ResponseLogCallback(res *resty.ResponseLog) error {
 	} else {
 		body.Str("body", res.Body)
 	}
-	log.Debug(context.TODO()).Dict("response", body).Send()
+	log.Debug(context.TODO()).Str("client", "resty").Dict("response", body).Send()
 	return nil
 }
 
