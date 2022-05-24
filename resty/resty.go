@@ -8,14 +8,33 @@ import (
 	"strings"
 )
 
+const (
+	Json    = "json"
+	Default = "default"
+)
+
 var _logger = &Logger{}
+
+func SetFormat(format string) {
+	switch format {
+	case Json:
+		debugFormat = Json
+	default:
+		debugFormat = Default
+	}
+}
+
+var debugFormat = Default
 
 func SetDebug(c *resty.Client, debug bool) *resty.Client {
 	if debug {
-		return c.OnRequestLog(RequestLogCallback).
-			OnResponseLog(ResponseLogCallback).
-			SetLogger(_logger).
-			SetDebug(debug)
+		if debugFormat == Json {
+			return c.OnRequestLog(RequestLogCallback).
+				OnResponseLog(ResponseLogCallback).
+				SetLogger(_logger).
+				SetDebug(debug)
+		}
+		return c.SetDebug(debug)
 	}
 	return c
 }
