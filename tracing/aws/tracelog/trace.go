@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	SpanId  = "aws.amazon.com/spanId"
-	Id      = "aws.amazon.com/trace"
-	Sampled = "aws.amazon.com/trace_sampled"
+	SpanId  = "span_id"
+	Id      = "trace_id"
+	Sampled = "sampled"
 )
 
 func Setup() {
@@ -49,7 +49,7 @@ func (tc *TracingContext) Dump(ctx context.Context, log *zerolog.Event) *zerolog
 	if span != nil {
 		spanCtx := span.SpanContext()
 		log = log.Str("trace_id", spanCtx.TraceID().String()).Str("span_id", spanCtx.SpanID().String()).
-			Bool("sampled", spanCtx.IsSampled())
+			Str("sampled", cond(spanCtx.IsSampled(), "01", "00"))
 	}
 	if tc.Service != "" {
 		log = log.Dict("serviceContext", zerolog.Dict().Str("service", tc.Service))
@@ -64,10 +64,17 @@ func (tc *TracingContext) WithTrace(ctx context.Context, event *zerolog.Event) *
 		spanCtx := span.SpanContext()
 		event = event.Str(Id, spanCtx.TraceID().String()).
 			Str(SpanId, spanCtx.SpanID().String()).
-			Bool(Sampled, span.IsRecording())
+			Str(Sampled, cond(span.IsRecording(), "01", "00"))
 	}
 	if tc.RequestID != "" {
 		event = event.Str("request_id", tc.RequestID)
 	}
 	return event
+}
+
+func cond(is bool, trueValue string, falseValue string) string {
+	if is {
+		return trueValue
+	}
+	return falseValue
 }
