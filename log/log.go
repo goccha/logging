@@ -19,6 +19,8 @@ func init() {
 	}
 	if len(level) > 0 {
 		switch level {
+		case "trace":
+			zerolog.SetGlobalLevel(zerolog.TraceLevel)
 		case "debug":
 			zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		case "info":
@@ -29,6 +31,10 @@ func init() {
 			zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 		case "fatal":
 			zerolog.SetGlobalLevel(zerolog.FatalLevel)
+		case "panic":
+			zerolog.SetGlobalLevel(zerolog.PanicLevel)
+		case "disabled":
+			zerolog.SetGlobalLevel(zerolog.Disabled)
 		default:
 			zerolog.SetGlobalLevel(zerolog.NoLevel)
 		}
@@ -50,6 +56,10 @@ func SetGlobalErr(w io.Writer) {
 
 func Default() *zerolog.Event {
 	return log.Info().Str("severity", "DEFAULT")
+}
+
+func Trace(ctx context.Context) *zerolog.Event {
+	return tracing.WithTrace(ctx, log.Trace()).Str("severity", "TRACE")
 }
 
 func Debug(ctx context.Context) *zerolog.Event {
