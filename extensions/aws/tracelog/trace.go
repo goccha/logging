@@ -2,11 +2,15 @@ package tracelog
 
 import (
 	"context"
+	"github.com/aws/aws-lambda-go/lambdacontext"
+	"github.com/awslabs/aws-lambda-go-api-proxy/core"
+	"github.com/goccha/envar"
 	"github.com/goccha/http-constants/pkg/headers"
 	"github.com/goccha/logging/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/trace"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -15,16 +19,40 @@ const (
 	Sampled = "sampled"
 )
 
+var awsEnv = envar.String("AWS_EXECUTION_ENV")
+
 func Setup() {
 	tracing.Setup(WithTrace)
 }
 
-func New(ctx context.Context, req *http.Request) tracing.Tracing {
-	return &TracingContext{
-		Path:      req.URL.Path,
-		ClientIP:  tracing.ClientIP(req),
-		RequestID: req.Header.Get(headers.RequestID),
-		Service:   tracing.Service,
+func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
+	return func(ctx context.Context, req *http.Request) tracing.Tracing {
+		var requestId string
+		if strings.HasPrefix(awsEnv, "AWS_Lambda_") { // Lambda環境の場合
+			if rest, ok := core.GetAPIGatewayContextFromContext(ctx); ok { // RestAPI
+				requestId = rest.RequestID
+			} else {
+				if v2, ok := core.GetAPIGatewayV2ContextFromContext(ctx); ok { // HttpAPI
+					requestId = v2.RequestID
+				}
+			}
+			if requestId == "" {
+				if lc, ok := lambdacontext.FromContext(ctx); ok {
+					requestId = lc.AwsRequestID
+				}
+			}
+		} else {
+			requestId = req.Header.Get(headers.AwsRequestID)
+		}
+		if requestId == "" {
+			requestId = req.Header.Get(headers.RequestID)
+		}
+		return &TracingContext{
+			Path:      req.URL.Path,
+			ClientIP:  tracing.ClientIP(req),
+			RequestID: requestId,
+			Service:   tracing.Service,
+		}
 	}
 }
 

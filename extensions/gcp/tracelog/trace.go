@@ -30,13 +30,15 @@ func Setup() {
 	tracing.Setup(WithTrace)
 }
 
-func New(ctx context.Context, req *http.Request) tracing.Tracing {
-	return &TracingContext{
-		Path:      req.URL.Path,
-		ClientIP:  tracing.ClientIP(req),
-		RequestID: req.Header.Get(headers.RequestID),
-		Service:   tracing.Service,
-		Producer:  envar.Get("GOOGLE_TRACE_PRODUCER").String(""),
+func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
+	return func(ctx context.Context, req *http.Request) tracing.Tracing {
+		return &TracingContext{
+			Path:      req.URL.Path,
+			ClientIP:  tracing.ClientIP(req),
+			RequestID: req.Header.Get(headers.RequestID),
+			Service:   tracing.Service,
+			Producer:  envar.Get("GOOGLE_TRACE_PRODUCER").String(""),
+		}
 	}
 }
 
