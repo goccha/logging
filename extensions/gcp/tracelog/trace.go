@@ -80,7 +80,7 @@ func (tc *TracingContext) WithTrace(ctx context.Context, event *zerolog.Event) *
 			spanCtx := span.SpanContext()
 			event = event.Str(Id, fmt.Sprintf("project/%s/traces/%s", projectID, spanCtx.TraceID().String())).
 				Str(SpanId, spanCtx.SpanID().String()).
-				Bool(Sampled, span.IsRecording())
+				Bool(Sampled, spanCtx.IsSampled())
 		}
 	}
 	if tc.RequestID != "" {
