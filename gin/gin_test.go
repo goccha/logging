@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/assert/v2"
+	"github.com/goccha/logging/extensions/aws/tracelog"
 	"github.com/goccha/logging/log"
-	"github.com/goccha/logging/tracing/aws/tracelog"
 	"go.opentelemetry.io/otel"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +25,7 @@ func TestJsonLogger(t *testing.T) {
 
 	var tracer = otel.Tracer("github.com/goccha-tracer")
 	router := gin.New()
-	router.Use(TraceRequest(tracer, true, tracelog.New), AccessLog()).
+	router.Use(TraceRequest(tracer, true, tracelog.New()), AccessLog()).
 		GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})
