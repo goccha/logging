@@ -7,7 +7,6 @@ import (
 	"github.com/goccha/logging/log"
 	"github.com/goccha/logging/tracing"
 	"github.com/rs/zerolog"
-	"strings"
 	"time"
 )
 
@@ -40,12 +39,12 @@ func JsonLogger(f func(e *zerolog.Event) *zerolog.Event, notlogged ...string) gi
 			ua := c.Request.Header.Get(headers.UserAgent)
 			comment := c.Errors.ByType(gin.ErrorTypePrivate).String()
 			requestUrl := c.Request.URL.String()
-			if !strings.HasPrefix(requestUrl, "https://") && !strings.HasPrefix(requestUrl, "http://") {
-				scheme := "http://"
+			if c.Request.URL.Scheme == "" {
+				scheme := "http"
 				if c.Request.TLS != nil {
-					scheme = "https://"
+					scheme = "https"
 				}
-				requestUrl = scheme + c.Request.Host + requestUrl
+				requestUrl = fmt.Sprintf("%s://%s%s", scheme, c.Request.Host, requestUrl)
 			}
 			contentLength := c.Writer.Size()
 			e := log.Info(c.Request.Context()).Dict("httpRequest", zerolog.Dict().
