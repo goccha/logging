@@ -56,10 +56,31 @@ func (b *Processor) masking(ctx context.Context, body map[string]interface{}) ma
 				if val != 0 {
 					body[k] = MaskNumber
 				}
+			case []interface{}:
+				for i, iv := range val {
+					switch vv := iv.(type) {
+					case string:
+						if vv != "" {
+							val[i] = b.Value
+						}
+					case float64:
+						if iv != 0 {
+							val[i] = float64(MaskNumber)
+						}
+					}
+
+				}
 			}
 		} else {
 			if m, ok := v.(map[string]interface{}); ok {
 				body[k] = b.masking(ctx, m)
+			} else if a, ok := v.([]interface{}); ok {
+				for i, av := range a {
+					switch iv := av.(type) {
+					case map[string]interface{}:
+						a[i] = b.masking(ctx, iv)
+					}
+				}
 			}
 		}
 	}
