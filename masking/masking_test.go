@@ -3,11 +3,13 @@ package masking
 import (
 	"context"
 	"encoding/json"
+	"github.com/gorilla/schema"
 	"github.com/stretchr/testify/assert"
+	"net/url"
 	"testing"
 )
 
-func TestProcessor_Mask(t *testing.T) {
+func TestProcessor_JsonMask(t *testing.T) {
 	type Profile struct {
 		Name    string `json:"name"`
 		Age     int    `json:"age"`
@@ -53,10 +55,7 @@ func TestProcessor_Mask(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	data, err := json.Marshal(body)
-	assert.NoError(t, err)
-
-	data, err = New("password", "name", "age", "phone", "address", "introducers").Run(ctx, data)
+	data, err := New("password", "name", "age", "phone", "address", "introducers").Run(ctx, Json(body))
 	assert.NoError(t, err)
 
 	err = json.Unmarshal(data, body)
@@ -86,4 +85,54 @@ func TestProcessor_Mask(t *testing.T) {
 	for _, v := range body.Introducers {
 		assert.Equal(t, MaskValue, v)
 	}
+}
+
+func TestJson(t *testing.T) {
+	str := "{\"username\":\"test_user\",\"password\":\"qwerty\"}"
+	ctx := context.Background()
+	data, err := New("password").Run(ctx, Json(str))
+	assert.NoError(t, err)
+	body := map[string]interface{}{}
+	err = json.Unmarshal(data, &body)
+	assert.NoError(t, err)
+	assert.Equal(t, MaskValue, body["password"])
+}
+
+func TestProcessor_FormMask(t *testing.T) {
+	type UserPass struct {
+		Username string `schema:"username" json:"username"`
+		Password string `schema:"password" json:"password"`
+		Range    []int  `schema:"range" json:"range"`
+	}
+	req := &UserPass{
+		Username: "test_user",
+		Password: "qwerty",
+		Range:    []int{10, 20},
+	}
+	encoder := schema.NewEncoder()
+	body := url.Values{}
+	err := encoder.Encode(req, body)
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	data, err := New("password").Run(ctx, Form(body))
+	assert.NoError(t, err)
+
+	form := url.Values{}
+	err = json.Unmarshal(data, &form)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(form["password"]))
+	assert.Equal(t, MaskValue, form["password"][0])
+}
+
+func TestForm(t *testing.T) {
+	str := "username=test_user&password=qwerty"
+	ctx := context.Background()
+	data, err := New("password").Run(ctx, Form(str))
+	assert.NoError(t, err)
+	form := url.Values{}
+	err = json.Unmarshal(data, &form)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(form["password"]))
+	assert.Equal(t, MaskValue, form["password"][0])
 }

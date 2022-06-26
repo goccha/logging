@@ -79,6 +79,8 @@ github.com/goccha/http-constants v0.0.4 h1:sBAetBcdaBCMnNGoGJCDlk0B4B/KVqiPla2YM
 github.com/goccha/http-constants v0.0.4/go.mod h1:zizCeTPHMYNwvcuwDNHWq52MtcARVwHJVs74EH9rxp0=
 github.com/goccha/log v0.0.2 h1:ssaTVcQSf3NYu9Koc7nozl4vQ+N7mG5Fn5u6/TtfqI4=
 github.com/goccha/log v0.0.2/go.mod h1:xs45DhG3T7ZbXiV7ZOyWewsOY5EBQWXnHEvsR7HoiD8=
+github.com/goccha/logging/extensions/aws v0.0.1 h1:snm94ZsqMaT8x8m8vuCY6yLiY7cGRixmiqhWqWOeyTY=
+github.com/goccha/logging/extensions/aws v0.0.1/go.mod h1:1ea330rhvwXchPD6/4AuBTalNhRDq1SmmpblgIBIsGY=
 github.com/goccy/go-json v0.9.7 h1:IcB+Aqpx/iMHu5Yooh7jEzJk1JZ7Pjtmys2ukPr7EeM=
 github.com/goccy/go-json v0.9.7/go.mod h1:6MelG93GURQebXPDq3khkgXZkazVtN9CRI+MGFi0w8I=
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
