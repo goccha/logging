@@ -22,9 +22,7 @@ func New(keys ...string) *Processor {
 
 func (b *Processor) Add(key string, keys ...string) *Processor {
 	b.keys = append(b.keys, key)
-	for _, k := range keys {
-		b.keys = append(b.keys, k)
-	}
+	b.keys = append(b.keys, keys...)
 	return b
 }
 
