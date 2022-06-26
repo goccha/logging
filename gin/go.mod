@@ -7,7 +7,7 @@ require (
 	github.com/go-playground/assert/v2 v2.0.1
 	github.com/goccha/http-constants v0.0.4
 	github.com/goccha/logging v0.0.5
-	github.com/goccha/logging/extensions/aws v0.0.0
+	github.com/goccha/logging/extensions/aws v0.0.1
 	github.com/rs/zerolog v1.27.0
 	go.opentelemetry.io/otel v1.7.0
 	go.opentelemetry.io/otel/trace v1.7.0
@@ -41,7 +41,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-replace (
-	github.com/goccha/logging => ../.
-	github.com/goccha/logging/extensions/aws => ./../extensions/aws
-)
+replace github.com/goccha/logging => ../.
