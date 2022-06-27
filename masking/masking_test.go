@@ -96,6 +96,11 @@ func TestJson(t *testing.T) {
 	err = json.Unmarshal(data, &body)
 	assert.NoError(t, err)
 	assert.Equal(t, MaskValue, body["password"])
+
+	str = ""
+	data, err = New("password").Run(ctx, Json(str))
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(data))
 }
 
 func TestProcessor_FormMask(t *testing.T) {
@@ -135,4 +140,9 @@ func TestForm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(form["password"]))
 	assert.Equal(t, MaskValue, form["password"][0])
+
+	str = ""
+	data, err = New("password").Run(ctx, Form(str))
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(data))
 }

@@ -26,10 +26,15 @@ func (b *Processor) Add(key string, keys ...string) *Processor {
 	return b
 }
 
+var empty []byte
+
 func (b *Processor) Run(ctx context.Context, f Unmarshal) ([]byte, error) {
 	data, err := f()
 	if err != nil {
 		return nil, err
+	}
+	if len(data) == 0 {
+		return empty, nil
 	}
 	body := make(map[string]interface{})
 	if err = json.Unmarshal(data, &body); err != nil {
@@ -60,6 +65,9 @@ func Form(v interface{}) Unmarshal {
 	return func() (data []byte, err error) {
 		switch val := v.(type) {
 		case string:
+			if len(val) == 0 {
+				return empty, nil
+			}
 			var form url.Values
 			if form, err = url.ParseQuery(val); err != nil {
 				return
