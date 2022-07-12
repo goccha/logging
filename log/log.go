@@ -54,8 +54,8 @@ func SetGlobalErr(w io.Writer) {
 	errorLogger = zerolog.New(w).With().Caller().Timestamp().Logger()
 }
 
-func Default() *zerolog.Event {
-	return log.Info().Str("severity", "DEFAULT")
+func Default(ctx context.Context) *zerolog.Event {
+	return tracing.WithTrace(ctx, log.Trace()).Str("severity", "DEFAULT")
 }
 
 func Trace(ctx context.Context) *zerolog.Event {
