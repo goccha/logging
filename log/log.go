@@ -111,3 +111,35 @@ func skipLogger(logger zerolog.Logger, skip ...int) zerolog.Logger {
 	}
 	return logger
 }
+
+type objectKey struct{}
+
+var objKey = objectKey{}
+
+func WithObject(ctx context.Context, obj zerolog.LogObjectMarshaler) context.Context {
+	var objs Objects
+	if v := ctx.Value(objKey); v == nil {
+		objs = make(Objects, 0, 1)
+	} else {
+		objs = v.(Objects)
+	}
+	objs = append(objs, obj)
+	return context.WithValue(ctx, objKey, objs)
+}
+
+func EmbedObject(ctx context.Context, event *zerolog.Event) *zerolog.Event {
+	if v := ctx.Value(objKey); v != nil {
+		if objs, ok := v.(Objects); ok {
+			objs.EmbedObject(event)
+		}
+	}
+	return event
+}
+
+type Objects []zerolog.LogObjectMarshaler
+
+func (objs Objects) EmbedObject(event *zerolog.Event) {
+	for _, v := range objs {
+		event.EmbedObject(v)
+	}
+}

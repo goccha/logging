@@ -47,12 +47,13 @@ func JsonLogger(f func(e *zerolog.Event) *zerolog.Event, notlogged ...string) gi
 				requestUrl = fmt.Sprintf("%s://%s%s", scheme, c.Request.Host, requestUrl)
 			}
 			contentLength := c.Writer.Size()
-			e := log.Info(c.Request.Context()).Dict("httpRequest", zerolog.Dict().
+			ctx := c.Request.Context()
+			e := log.EmbedObject(ctx, log.Info(ctx).Dict("httpRequest", zerolog.Dict().
 				Int("status", c.Writer.Status()).Str("remoteIp", tracing.ClientIP(c.Request)).
 				Str("userAgent", ua).Str("latency", fmt.Sprintf("%vs", latency.Seconds())).
 				Str("requestMethod", c.Request.Method).Str("requestUrl", requestUrl).
 				Str("protocol", c.Request.Proto).Int64("requestSize", c.Request.ContentLength).
-				Int("responseSize", contentLength))
+				Int("responseSize", contentLength)))
 			if f != nil {
 				f(e).Msg(comment)
 			} else {
