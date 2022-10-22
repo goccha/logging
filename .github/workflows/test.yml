@@ -2,9 +2,15 @@ name: Run Test
 
 on:
   push:
+    branches:
+      - '**'
+      - '!main'
     paths:
       - '**.go'
   pull_request:
+    branches:
+      - develop
+      - main
     types:
       - opened
     paths:
@@ -19,13 +25,13 @@ jobs:
 
     steps:
 
-      - name: Set up Go 1.19.1
-        uses: actions/setup-go@v2
+      - name: Set up Go 1.19.2
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.19.1
+          go-version: 1.19.2
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Run checks
         uses: golangci/golangci-lint-action@v3
