@@ -2,63 +2,60 @@ package gin
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/goccha/http-constants/pkg/headers"
 	"github.com/goccha/logging/log"
 	"github.com/goccha/logging/tracing"
 	"github.com/rs/zerolog"
-	"time"
 )
 
-func AccessLog(f ...func(e *zerolog.Event) *zerolog.Event) gin.HandlerFunc {
-	if len(f) > 0 {
-		return JsonLogger(f[0])
-	}
-	return JsonLogger(nil)
-}
-
-func JsonLogger(f func(e *zerolog.Event) *zerolog.Event, notlogged ...string) gin.HandlerFunc {
-	var skip map[string]struct{}
-	if length := len(notlogged); length > 0 {
-		skip = make(map[string]struct{}, length)
-		for _, path := range notlogged {
-			skip[path] = struct{}{}
-		}
-	}
+func AccessLog(f ...func(c *gin.Context, e *zerolog.Event) *zerolog.Event) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Start timer
 		start := time.Now()
-		path := c.Request.URL.Path
 		// Process request
 		c.Next()
-		// Log only when path is not being skipped
-		if _, ok := skip[path]; !ok {
-			// Stop timer
-			end := time.Now()
-			latency := end.Sub(start)
-			ua := c.Request.Header.Get(headers.UserAgent)
-			comment := c.Errors.ByType(gin.ErrorTypePrivate).String()
-			requestUrl := c.Request.URL.String()
-			if c.Request.URL.Scheme == "" {
-				scheme := "http"
-				if c.Request.TLS != nil {
-					scheme = "https"
-				}
-				requestUrl = fmt.Sprintf("%s://%s%s", scheme, c.Request.Host, requestUrl)
-			}
-			contentLength := c.Writer.Size()
-			ctx := c.Request.Context()
-			e := log.EmbedObject(ctx, log.Info(ctx).Dict("httpRequest", zerolog.Dict().
-				Int("status", c.Writer.Status()).Str("remoteIp", tracing.ClientIP(c.Request)).
-				Str("userAgent", ua).Str("latency", fmt.Sprintf("%vs", latency.Seconds())).
-				Str("requestMethod", c.Request.Method).Str("requestUrl", requestUrl).
-				Str("protocol", c.Request.Proto).Int64("requestSize", c.Request.ContentLength).
-				Int("responseSize", contentLength)))
-			if f != nil {
-				f(e).Msg(comment)
-			} else {
-				e.Msg(comment)
-			}
+		// Stop timer
+		end := time.Now()
+		latency := end.Sub(start)
+		f = append(f, func(c *gin.Context, e *zerolog.Event) *zerolog.Event {
+			return e.Str("latency", fmt.Sprintf("%vs", latency.Seconds()))
+		})
+		JsonLog(c, f...)
+	}
+}
+
+func JsonLog(c *gin.Context, filters ...func(c *gin.Context, e *zerolog.Event) *zerolog.Event) {
+	req := c.Request
+	ctx := req.Context()
+	ua := req.Header.Get(headers.UserAgent)
+	requestUrl := req.URL.String()
+	if req.URL.Scheme == "" {
+		scheme := "http"
+		if req.TLS != nil {
+			scheme = "https"
+		}
+		requestUrl = fmt.Sprintf("%s://%s%s", scheme, req.Host, requestUrl)
+	}
+	e := log.Info(ctx).Dict("httpRequest", zerolog.Dict().
+		Int("status", c.Writer.Status()).Str("remoteIp", tracing.ClientIP(req)).
+		Str("userAgent", ua).
+		Str("requestMethod", req.Method).Str("requestUrl", requestUrl).
+		Str("protocol", req.Proto).Int64("requestSize", req.ContentLength).
+		Int("responseSize", c.Writer.Size()))
+	for _, f := range filters {
+		if e = f(c, e); e == nil {
+			return
+		}
+	}
+	if e != nil {
+		errMsgs := c.Errors.ByType(gin.ErrorTypePrivate)
+		if len(errMsgs) > 0 {
+			log.EmbedObject(ctx, e).Msg(errMsgs.String())
+		} else {
+			log.EmbedObject(ctx, e).Send()
 		}
 	}
 }

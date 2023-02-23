@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/goccha/logging/log"
 	"github.com/goccha/logging/tracing"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -22,8 +23,9 @@ func TraceRequest(tracer trace.Tracer, dump bool, f tracing.NewFunc) gin.Handler
 		if dump {
 			dumpHeaders(c)
 		}
-		ctx, span := tracer.Start(c.Request.Context(), "httpRequest")
-		defer span.End()
+		ctx := c.Request.Context()
+		span := trace.SpanFromContext(ctx)
+		span.SetAttributes(semconv.HTTPURL(c.Request.URL.String()))
 		c.Request = c.Request.WithContext(tracing.With(ctx, c.Request, f))
 		if dump {
 			log.Dump(c.Request.Context(), log.Debug(c.Request.Context())).Send()
