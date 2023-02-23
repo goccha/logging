@@ -2,6 +2,9 @@ package tracelog
 
 import (
 	"context"
+	"net/http"
+	"strings"
+
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/awslabs/aws-lambda-go-api-proxy/core"
 	"github.com/goccha/envar"
@@ -9,8 +12,6 @@ import (
 	"github.com/goccha/logging/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/trace"
-	"net/http"
-	"strings"
 )
 
 const (
