@@ -20,14 +20,13 @@ func AccessLog(f ...func(c *gin.Context, e *zerolog.Event) *zerolog.Event) gin.H
 		// Stop timer
 		end := time.Now()
 		latency := end.Sub(start)
-		f = append(f, func(c *gin.Context, e *zerolog.Event) *zerolog.Event {
-			return e.Str("latency", fmt.Sprintf("%vs", latency.Seconds()))
-		})
-		JsonLog(c, f...)
+		JsonLog(c, func(c *gin.Context, e *zerolog.Event) {
+			e.Str("latency", fmt.Sprintf("%vs", latency.Seconds()))
+		}, f...)
 	}
 }
 
-func JsonLog(c *gin.Context, filters ...func(c *gin.Context, e *zerolog.Event) *zerolog.Event) {
+func JsonLog(c *gin.Context, f func(c *gin.Context, e *zerolog.Event), filters ...func(c *gin.Context, e *zerolog.Event) *zerolog.Event) {
 	req := c.Request
 	ctx := req.Context()
 	ua := req.Header.Get(headers.UserAgent)
@@ -45,17 +44,21 @@ func JsonLog(c *gin.Context, filters ...func(c *gin.Context, e *zerolog.Event) *
 		Str("requestMethod", req.Method).Str("requestUrl", requestUrl).
 		Str("protocol", req.Proto).Int64("requestSize", req.ContentLength).
 		Int("responseSize", c.Writer.Size()))
-	for _, f := range filters {
-		if e = f(c, e); e == nil {
+	if f != nil {
+		f(c, e)
+	}
+	event := log.EmbedObject(ctx, e)
+	for _, filter := range filters {
+		if event = filter(c, event); event == nil {
 			return
 		}
 	}
-	if e != nil {
+	if event != nil {
 		errMsgs := c.Errors.ByType(gin.ErrorTypePrivate)
 		if len(errMsgs) > 0 {
-			log.EmbedObject(ctx, e).Msg(errMsgs.String())
+			event.Msg(errMsgs.String())
 		} else {
-			log.EmbedObject(ctx, e).Send()
+			event.Send()
 		}
 	}
 }
