@@ -6,7 +6,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.17.0
 	github.com/goccha/envar v0.2.0
 	github.com/goccha/http-constants v0.1.0
-	github.com/goccha/logging v0.1.2
+	github.com/goccha/logging v0.1.3
 	github.com/rs/zerolog v1.29.1
 	go.opentelemetry.io/contrib/detectors/gcp v1.17.0
 	go.opentelemetry.io/otel v1.16.0

@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/go-resty/resty/v2 v2.7.0
-	github.com/goccha/logging v0.1.2
+	github.com/goccha/logging v0.1.3
 	github.com/rs/zerolog v1.29.1
 )
 
