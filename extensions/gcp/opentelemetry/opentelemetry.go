@@ -15,6 +15,8 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 )
 
+// NewTracerProvider creates a new TracerProvider with the given serviceName.
+// Deprecated: Use tracers.NewTracerProvider instead.
 func NewTracerProvider(ctx context.Context, serviceName string) (*sdktrace.TracerProvider, error) {
 	if envar.Bool("TRACING_ENABLE") {
 		projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")

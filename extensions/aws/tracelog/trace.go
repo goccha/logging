@@ -23,6 +23,8 @@ const (
 var awsEnv = envar.String("AWS_EXECUTION_ENV")
 var _config = &Config{}
 
+// Setup
+// Deprecated: Use xray/tracelog.Setup instead.
 func Setup(opt ...Option) {
 	tracing.Setup(WithTrace)
 	if len(opt) > 0 {
@@ -32,6 +34,8 @@ func Setup(opt ...Option) {
 	}
 }
 
+// New
+// Deprecated: Use xray/tracelog.New instead.
 func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 	return func(ctx context.Context, req *http.Request) tracing.Tracing {
 		return &TracingContext{
