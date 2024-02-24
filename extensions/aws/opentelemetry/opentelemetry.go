@@ -11,10 +11,12 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"google.golang.org/grpc"
 )
 
+// NewTracerProvider creates a new TracerProvider with the given service name.
+// Deprecated: Use tracers.NewTracerProvider instead.
 func NewTracerProvider(ctx context.Context, serviceName string) (*sdktrace.TracerProvider, error) {
 	if envar.Bool("TRACING_ENABLE") {
 		attrs := make([]attribute.KeyValue, 0, 4)

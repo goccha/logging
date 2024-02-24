@@ -1,20 +1,19 @@
-module github.com/goccha/logging/extensions/aws
+module github.com/goccha/logging/extensions/xray
 
-go 1.21
-
-toolchain go1.21.7
+go 1.21.7
 
 require (
 	github.com/aws/aws-lambda-go v1.46.0
 	github.com/awslabs/aws-lambda-go-api-proxy v0.16.1
 	github.com/goccha/envar v0.2.1
 	github.com/goccha/http-constants v0.1.0
-	github.com/goccha/logging v0.1.3
+	github.com/goccha/logging v0.1.4
+	github.com/goccha/logging/extensions/tracers v0.0.0-00010101000000-000000000000
 	github.com/rs/zerolog v1.32.0
-	go.opentelemetry.io/contrib/propagators/aws v1.23.0
+	go.opentelemetry.io/contrib/propagators/aws v1.24.0
 	go.opentelemetry.io/otel v1.24.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.23.1
-	go.opentelemetry.io/otel/sdk v1.23.1
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.24.0
+	go.opentelemetry.io/otel/sdk v1.24.0
 	go.opentelemetry.io/otel/trace v1.24.0
 	google.golang.org/grpc v1.62.0
 )
@@ -32,7 +31,7 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.23.1 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.24.0 // indirect
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.1.0 // indirect
 	golang.org/x/crypto v0.19.0 // indirect
@@ -44,4 +43,7 @@ require (
 	google.golang.org/protobuf v1.32.0 // indirect
 )
 
-replace github.com/goccha/logging => ../../.
+replace (
+	github.com/goccha/logging => ../../.
+	github.com/goccha/logging/extensions/tracers => ../../extensions/tracers
+)

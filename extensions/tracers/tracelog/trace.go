@@ -3,11 +3,7 @@ package tracelog
 import (
 	"context"
 	"net/http"
-	"strings"
 
-	"github.com/aws/aws-lambda-go/lambdacontext"
-	"github.com/awslabs/aws-lambda-go-api-proxy/core"
-	"github.com/goccha/envar"
 	"github.com/goccha/http-constants/pkg/headers"
 	"github.com/goccha/logging/tracing"
 	"github.com/rs/zerolog"
@@ -20,11 +16,15 @@ const (
 	Sampled = "sampled"
 )
 
-var awsEnv = envar.String("AWS_EXECUTION_ENV")
 var _config = &Config{}
 
-// Setup
-// Deprecated: Use xray/tracelog.Setup instead.
+func (c Config) GetRequestId(req *http.Request) string {
+	if c.RequestId != "" {
+		return req.Header.Get(_config.RequestId)
+	}
+	return req.Header.Get(headers.RequestID)
+}
+
 func Setup(opt ...Option) {
 	tracing.Setup(WithTrace)
 	if len(opt) > 0 {
@@ -34,56 +34,19 @@ func Setup(opt ...Option) {
 	}
 }
 
-// New
-// Deprecated: Use xray/tracelog.New instead.
 func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 	return func(ctx context.Context, req *http.Request) tracing.Tracing {
 		return &TracingContext{
 			Path:      req.URL.Path,
 			ClientIP:  tracing.ClientIP(req),
-			RequestID: getRequestId(ctx, req),
+			RequestID: _config.GetRequestId(req),
 			Service:   tracing.Service,
 		}
 	}
 }
 
-func getRequestId(ctx context.Context, req *http.Request) string {
-	var requestId string
-	if strings.HasPrefix(awsEnv, "AWS_Lambda_") { // Lambda環境の場合
-		requestId = getLambdaRequestId(ctx)
-	} else {
-		if _config.RequestId != "" {
-			requestId = req.Header.Get(_config.RequestId)
-		}
-	}
-	if requestId == "" {
-		requestId = req.Header.Get(headers.AwsRequestID)
-	}
-	if requestId == "" {
-		requestId = req.Header.Get(headers.RequestID)
-	}
-	return requestId
-}
-
-func getLambdaRequestId(ctx context.Context) string {
-	var requestId string
-	if rest, ok := core.GetAPIGatewayContextFromContext(ctx); ok { // RestAPI
-		requestId = rest.RequestID
-	} else {
-		if v2, ok := core.GetAPIGatewayV2ContextFromContext(ctx); ok { // HttpAPI
-			requestId = v2.RequestID
-		}
-	}
-	if requestId == "" {
-		if lc, ok := lambdacontext.FromContext(ctx); ok {
-			requestId = lc.AwsRequestID
-		}
-	}
-	return requestId
-}
-
 func WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
-	value := ctx.Value(tracing.Key())
+	value := ctx.Value(tracing.Key)
 	if value != nil {
 		tc := value.(tracing.Tracing)
 		event = tc.WithTrace(ctx, event)
@@ -103,7 +66,7 @@ func (tc *TracingContext) Dump(ctx context.Context, log *zerolog.Event) *zerolog
 	if span != nil {
 		spanCtx := span.SpanContext()
 		log = log.Str("trace_id", spanCtx.TraceID().String()).Str("span_id", spanCtx.SpanID().String()).
-			Str("sampled", cond(spanCtx.IsSampled(), "01", "00"))
+			Bool("sampled", spanCtx.IsSampled())
 	}
 	if tc.Service != "" {
 		log = log.Dict("serviceContext", zerolog.Dict().Str("service", tc.Service))

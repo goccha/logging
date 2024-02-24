@@ -27,14 +27,10 @@ func init() {
 
 var projectID = envar.String("GCP_PROJECT", "GOOGLE_CLOUD_PROJECT")
 
-// Setup
-// Deprecated: cloudtrace/tracelog.Setup instead.
 func Setup() {
 	tracing.Setup(WithTrace)
 }
 
-// New
-// Deprecated: cloudtrace/tracelog.New instead.
 func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 	return func(ctx context.Context, req *http.Request) tracing.Tracing {
 		return &TracingContext{

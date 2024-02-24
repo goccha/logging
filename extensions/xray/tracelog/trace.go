@@ -23,8 +23,6 @@ const (
 var awsEnv = envar.String("AWS_EXECUTION_ENV")
 var _config = &Config{}
 
-// Setup
-// Deprecated: Use xray/tracelog.Setup instead.
 func Setup(opt ...Option) {
 	tracing.Setup(WithTrace)
 	if len(opt) > 0 {
@@ -34,8 +32,6 @@ func Setup(opt ...Option) {
 	}
 }
 
-// New
-// Deprecated: Use xray/tracelog.New instead.
 func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 	return func(ctx context.Context, req *http.Request) tracing.Tracing {
 		return &TracingContext{
@@ -134,7 +130,8 @@ func cond(is bool, trueValue string, falseValue string) string {
 }
 
 type Config struct {
-	RequestId string
+	RequestId     string
+	LogGroupNames []string
 }
 
 type Option func(c *Config)
@@ -142,5 +139,11 @@ type Option func(c *Config)
 func RequestId(header string) Option {
 	return func(c *Config) {
 		c.RequestId = header
+	}
+}
+
+func LogGroupNames(names ...string) Option {
+	return func(c *Config) {
+		c.LogGroupNames = names
 	}
 }
