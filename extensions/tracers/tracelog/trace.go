@@ -1,0 +1,109 @@
+package tracelog
+
+import (
+	"context"
+	"net/http"
+
+	"github.com/goccha/http-constants/pkg/headers"
+	"github.com/goccha/logging/tracing"
+	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel/trace"
+)
+
+const (
+	SpanId  = "span_id"
+	Id      = "trace_id"
+	Sampled = "sampled"
+)
+
+var _config = &Config{}
+
+func (c Config) GetRequestId(req *http.Request) string {
+	if c.RequestId != "" {
+		return req.Header.Get(_config.RequestId)
+	}
+	return req.Header.Get(headers.RequestID)
+}
+
+func Setup(opt ...Option) {
+	tracing.Setup(WithTrace)
+	if len(opt) > 0 {
+		for _, op := range opt {
+			op(_config)
+		}
+	}
+}
+
+func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
+	return func(ctx context.Context, req *http.Request) tracing.Tracing {
+		return &TracingContext{
+			Path:      req.URL.Path,
+			ClientIP:  tracing.ClientIP(req),
+			RequestID: _config.GetRequestId(req),
+			Service:   tracing.Service,
+		}
+	}
+}
+
+func WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
+	value := ctx.Value(tracing.Key)
+	if value != nil {
+		tc := value.(tracing.Tracing)
+		event = tc.WithTrace(ctx, event)
+	}
+	return event
+}
+
+type TracingContext struct {
+	Path      string
+	ClientIP  string
+	RequestID string
+	Service   string
+}
+
+func (tc *TracingContext) Dump(ctx context.Context, log *zerolog.Event) *zerolog.Event {
+	span := trace.SpanFromContext(ctx)
+	if span != nil {
+		spanCtx := span.SpanContext()
+		log = log.Str("trace_id", spanCtx.TraceID().String()).Str("span_id", spanCtx.SpanID().String()).
+			Bool("sampled", spanCtx.IsSampled())
+	}
+	if tc.Service != "" {
+		log = log.Dict("serviceContext", zerolog.Dict().Str("service", tc.Service))
+	}
+	return log.Str("client_ip", tc.ClientIP).
+		Str("request_id", tc.RequestID)
+}
+
+func (tc *TracingContext) WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
+	span := trace.SpanFromContext(ctx)
+	if span != nil {
+		spanCtx := span.SpanContext()
+		event = event.Str(Id, spanCtx.TraceID().String()).
+			Str(SpanId, spanCtx.SpanID().String()).
+			Str(Sampled, cond(spanCtx.IsSampled(), "01", "00"))
+	}
+	if tc.RequestID != "" {
+		event = event.Str("request_id", tc.RequestID)
+	}
+	return event
+}
+
+func cond(is bool, trueValue string, falseValue string) string {
+	if is {
+		return trueValue
+	}
+	return falseValue
+}
+
+type Config struct {
+	RequestId string
+}
+
+type Option func(c *Config)
+
+func RequestId(header string) Option {
+	return func(c *Config) {
+		c.RequestId = header
+	}
+}
