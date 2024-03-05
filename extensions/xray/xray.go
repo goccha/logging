@@ -7,6 +7,7 @@ import (
 
 	"github.com/goccha/envar"
 	"github.com/goccha/logging/extensions/tracers"
+	lambdadetector "go.opentelemetry.io/contrib/detectors/aws/lambda"
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -88,10 +89,16 @@ func TracerProviderOptions(ctx context.Context, attrs ...attribute.KeyValue) ([]
 	if err != nil {
 		return nil, err
 	}
-	rsc, err := resource.New(ctx,
-		// Keep the default detectors
-		resource.WithTelemetrySDK(),
-	)
+	var rsc *resource.Resource
+	execEnv := envar.String("AWS_EXECUTION_ENV")
+	if strings.HasPrefix(execEnv, "AWS_Lambda_") {
+		detector := lambdadetector.NewResourceDetector()
+		rsc, err = detector.Detect(ctx)
+	} else {
+		rsc, err = resource.New(ctx,
+			resource.WithTelemetrySDK(), // Keep the default detectors
+		)
+	}
 	if err != nil {
 		return nil, err
 	}
