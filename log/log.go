@@ -2,12 +2,13 @@ package log
 
 import (
 	"context"
-	"github.com/goccha/logging/tracing"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"io"
 	"os"
 	"time"
+
+	"github.com/goccha/logging/tracing"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func init() {
@@ -141,5 +142,46 @@ type Objects []zerolog.LogObjectMarshaler
 func (objs Objects) EmbedObject(event *zerolog.Event) {
 	for _, v := range objs {
 		event.EmbedObject(v)
+	}
+}
+
+type Object map[string]any
+
+func (obj Object) MarshalZerologObject(e *zerolog.Event) {
+	for k, v := range obj {
+		switch v := v.(type) {
+		case string:
+			e.Str(k, v)
+		case int:
+			e.Int(k, v)
+		case int64:
+			e.Int64(k, v)
+		case int32:
+			e.Int32(k, v)
+		case int16:
+			e.Int16(k, v)
+		case int8:
+			e.Int8(k, v)
+		case uint:
+			e.Uint(k, v)
+		case uint64:
+			e.Uint64(k, v)
+		case uint32:
+			e.Uint32(k, v)
+		case uint16:
+			e.Uint16(k, v)
+		case uint8:
+			e.Uint8(k, v)
+		case float64:
+			e.Float64(k, v)
+		case float32:
+			e.Float32(k, v)
+		case bool:
+			e.Bool(k, v)
+		case time.Time:
+			e.Time(k, v)
+		case any:
+			e.Interface(k, v)
+		}
 	}
 }
