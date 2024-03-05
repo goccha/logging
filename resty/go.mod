@@ -1,6 +1,6 @@
 module github.com/goccha/logging/resty
 
-go 1.17
+go 1.18
 
 require (
 	github.com/go-resty/resty/v2 v2.11.0

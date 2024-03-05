@@ -1,6 +1,6 @@
 module github.com/goccha/logging/extensions/datadog
 
-go 1.21.7
+go 1.21
 
 require (
 	github.com/goccha/http-constants v0.1.0

@@ -1,6 +1,6 @@
 module github.com/goccha/logging/extensions/cloudtrace
 
-go 1.21.7
+go 1.21
 
 require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.21.0

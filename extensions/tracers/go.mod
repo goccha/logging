@@ -1,6 +1,6 @@
 module github.com/goccha/logging/extensions/tracers
 
-go 1.21.7
+go 1.21
 
 require (
 	github.com/goccha/envar v0.2.3

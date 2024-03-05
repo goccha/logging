@@ -1,6 +1,6 @@
 module github.com/goccha/logging
 
-go 1.17
+go 1.18
 
 require (
 	github.com/goccha/http-constants v0.1.0
