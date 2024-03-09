@@ -1,4 +1,4 @@
-package gin
+package ginlog
 
 import (
 	"fmt"
