@@ -1,11 +1,12 @@
-package resty
+package restylog
 
 import (
 	"context"
+	"strings"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/goccha/logging/log"
 	"github.com/rs/zerolog"
-	"strings"
 )
 
 const (

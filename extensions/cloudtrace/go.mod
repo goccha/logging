@@ -6,7 +6,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.21.0
 	github.com/goccha/envar v0.2.3
 	github.com/goccha/http-constants v0.1.0
-	github.com/goccha/logging v0.1.5
+	github.com/goccha/logging v0.1.6
 	github.com/goccha/logging/extensions/tracers v0.0.2
 	github.com/rs/zerolog v1.32.0
 	go.opentelemetry.io/contrib/detectors/gcp v1.24.0
@@ -14,7 +14,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.24.0
 	go.opentelemetry.io/otel/sdk v1.24.0
 	go.opentelemetry.io/otel/trace v1.24.0
-	google.golang.org/grpc v1.62.0
+	google.golang.org/grpc v1.62.1
 )
 
 require (
@@ -34,7 +34,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.19.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.2 // indirect
@@ -56,12 +56,12 @@ require (
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	google.golang.org/api v0.168.0 // indirect
+	google.golang.org/api v0.169.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20240304212257-790db918fca8 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240304212257-790db918fca8 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240304212257-790db918fca8 // indirect
-	google.golang.org/protobuf v1.32.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240308144416-29370a3891b7 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240308144416-29370a3891b7 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 )
 
 replace (
