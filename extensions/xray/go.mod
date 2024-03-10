@@ -8,7 +8,7 @@ require (
 	github.com/goccha/envar v0.2.3
 	github.com/goccha/http-constants v0.1.0
 	github.com/goccha/logging v0.1.6
-	github.com/goccha/logging/extensions/tracers v0.0.2
+	github.com/goccha/logging/extensions/tracers v0.0.3
 	github.com/rs/zerolog v1.32.0
 	go.opentelemetry.io/contrib/detectors/aws/lambda v0.49.0
 	go.opentelemetry.io/contrib/propagators/aws v1.24.0
