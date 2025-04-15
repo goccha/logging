@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+
 	"github.com/goccha/logging/tracing"
 	"github.com/rs/zerolog"
 )
