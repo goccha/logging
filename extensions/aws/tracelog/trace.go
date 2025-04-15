@@ -26,7 +26,7 @@ var _config = &Config{}
 // Setup
 // Deprecated: Use xray/tracelog.Setup instead.
 func Setup(opt ...Option) {
-	tracing.Setup(WithTrace)
+	tracing.Setup(tracing.TraceOption(WithTrace()))
 	if len(opt) > 0 {
 		for _, op := range opt {
 			op(_config)
@@ -42,7 +42,7 @@ func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 			Path:      req.URL.Path,
 			ClientIP:  tracing.ClientIP(req),
 			RequestID: getRequestId(ctx, req),
-			Service:   tracing.Service,
+			Service:   tracing.Service(),
 		}
 	}
 }
@@ -82,13 +82,15 @@ func getLambdaRequestId(ctx context.Context) string {
 	return requestId
 }
 
-func WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
-	value := ctx.Value(tracing.Key())
-	if value != nil {
-		tc := value.(tracing.Tracing)
-		event = tc.WithTrace(ctx, event)
+func WithTrace() tracing.TraceFunc {
+	return func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
+		value := ctx.Value(tracing.Key())
+		if value != nil {
+			tc := value.(tracing.Tracing)
+			event = tc.WithTrace(ctx, event)
+		}
+		return event
 	}
-	return event
 }
 
 type TracingContext struct {

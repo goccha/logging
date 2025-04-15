@@ -3,9 +3,9 @@ package cloudtrace
 import (
 	"context"
 	"math"
-	"os"
 
-	gexporter "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
+	detectors "github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp"
+	exporters "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	"github.com/goccha/envar"
 	"github.com/goccha/logging/extensions/tracers"
 	"go.opentelemetry.io/contrib/detectors/gcp"
@@ -13,11 +13,10 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
-	"google.golang.org/grpc"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
-func WithServiceName(name string) tracers.Option {
+func WithServiceName(name string) tracers.KeyValueOption {
 	if name == "" {
 		name = envar.String("GAE_SERVICE", "K_SERVICE")
 	}
@@ -26,33 +25,53 @@ func WithServiceName(name string) tracers.Option {
 	}
 }
 
-func WithVersion(version string) tracers.Option {
+func WithVersion(version string) tracers.KeyValueOption {
 	if version == "" {
-		version = os.Getenv("K_REVISION")
+		version = envar.String("K_REVISION")
 	}
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		return append(attrs, semconv.ServiceVersion(version))
 	}
 }
 
-func Attributes(opt ...tracers.Option) []attribute.KeyValue {
-	attrs := make([]attribute.KeyValue, 0, 4)
-	attrs = append(attrs, semconv.CloudProviderGCP)
-	if envar.Has("GAE_APPLICATION") {
-		attrs = append(attrs, semconv.CloudPlatformGCPAppEngine)
-	} else if envar.Has("FUNCTION_TARGET") {
-		attrs = append(attrs, semconv.CloudPlatformGCPCloudFunctions)
-	} else if (envar.Has("K_REVISION") || envar.Has("K_SERVICE")) && envar.Has("K_CONFIGURATION") {
-		attrs = append(attrs, semconv.CloudPlatformGCPCloudRun)
-	} else if envar.Has("GKE_CLUSTER_NAME") {
-		attrs = append(attrs, semconv.CloudPlatformGCPKubernetesEngine)
+func ProjectId() string {
+	projectId, err := detectors.NewDetector().ProjectID()
+	if err != nil {
+		return envar.String("GOOGLE_CLOUD_PROJECT", "CLOUDSDK_CORE_PROJECT", "GCP_PROJECT", "GCLOUD_PROJECT")
 	}
-	for _, o := range opt {
-		attrs = o(attrs)
-	}
-	return attrs
+	return projectId
 }
 
+func WithExporter(projectId string) tracers.TracerProviderOption {
+	return func(ctx context.Context) (sdktrace.TracerProviderOption, error) {
+		exporter, err := exporters.New(exporters.WithProjectID(projectId))
+		if err != nil {
+			return nil, err
+		}
+		return sdktrace.WithBatcher(exporter), nil
+	}
+}
+
+func WithResource(attrs ...attribute.KeyValue) tracers.TracerProviderOption {
+	return func(ctx context.Context) (sdktrace.TracerProviderOption, error) {
+		rsc, err := resource.New(ctx,
+			resource.WithDetectors(gcp.NewDetector()),
+			resource.WithTelemetrySDK())
+		if err != nil {
+			return nil, err
+		}
+		if len(attrs) > 0 {
+			rsc, err = resource.Merge(rsc, resource.NewWithAttributes(rsc.SchemaURL(), attrs...))
+			if err != nil {
+				return nil, err
+			}
+		}
+		return sdktrace.WithResource(rsc), nil
+	}
+}
+
+// TracerProviderOptions returns a slice of TracerProviderOption for configuring the OpenTelemetry TracerProvider.
+// Deprecated: use tracers.TracerProviderOptions instead.
 func TracerProviderOptions(ctx context.Context, attrs ...attribute.KeyValue) ([]sdktrace.TracerProviderOption, error) {
 	opts := make([]sdktrace.TracerProviderOption, 0, 4)
 	fraction := envar.Get("TRACE_ID_RATIO_BASE").Float64(math.NaN())
@@ -65,7 +84,7 @@ func TracerProviderOptions(ctx context.Context, attrs ...attribute.KeyValue) ([]
 		opts = append(opts, sdktrace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, attrs...)))
 	}
 	if projectID := envar.String("GOOGLE_CLOUD_PROJECT", "CLOUDSDK_CORE_PROJECT", "GCP_PROJECT", "GCLOUD_PROJECT"); projectID != "" {
-		exporter, err := gexporter.New(gexporter.WithProjectID(projectID))
+		exporter, err := exporters.New(exporters.WithProjectID(projectID))
 		if err != nil {
 			return nil, err
 		}
@@ -82,13 +101,12 @@ func TracerProviderOptions(ctx context.Context, attrs ...attribute.KeyValue) ([]
 	} else {
 		endpoint := envar.Get("OTEL_EXPORTER_OTLP_ENDPOINT").String("0.0.0.0:4317")
 		exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithInsecure(),
-			otlptracegrpc.WithEndpoint(endpoint), otlptracegrpc.WithDialOption(grpc.WithBlock()))
+			otlptracegrpc.WithEndpoint(endpoint))
 		if err != nil {
 			return nil, err
 		}
 		rsc, err := resource.New(ctx,
-			// Keep the default detectors
-			resource.WithTelemetrySDK(),
+			resource.WithTelemetrySDK(), // Keep the default detectors
 		)
 		if err != nil {
 			return nil, err
