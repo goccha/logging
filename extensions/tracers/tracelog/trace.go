@@ -16,17 +16,59 @@ const (
 	Sampled = "sampled"
 )
 
+type Config struct {
+	RequestIdHeader string
+	RequestIdFunc
+	funcs []tracing.TraceFunc
+}
+
+type RequestIdFunc func(ctx context.Context, req *http.Request) string
+
 var _config = &Config{}
 
-func (c Config) GetRequestId(req *http.Request) string {
-	if c.RequestId != "" {
-		return req.Header.Get(_config.RequestId)
+func (c *Config) GetRequestId(ctx context.Context, req *http.Request) string {
+	if c.RequestIdFunc != nil {
+		return c.RequestIdFunc(ctx, req)
+	}
+	if c.RequestIdHeader != "" {
+		return req.Header.Get(_config.RequestIdHeader)
 	}
 	return req.Header.Get(headers.RequestID)
 }
 
+func (c *Config) Funcs() []tracing.TraceFunc {
+	return c.funcs
+}
+
+func TraceConfig() *Config {
+	return _config
+}
+
+type Option func(c *Config)
+
+func WithRequestIdHeader(header string) Option {
+	return func(c *Config) {
+		c.RequestIdHeader = header
+	}
+}
+
+func WithRequestIdFunc(f RequestIdFunc) Option {
+	return func(c *Config) {
+		c.RequestIdFunc = f
+	}
+}
+
+func WithTraceFuncs(opt ...tracing.TraceFunc) Option {
+	return func(c *Config) {
+		if c.funcs == nil {
+			c.funcs = make([]tracing.TraceFunc, 0, len(opt))
+		}
+		c.funcs = append(c.funcs, opt...)
+	}
+}
+
 func Setup(opt ...Option) {
-	tracing.Setup(WithTrace)
+	tracing.Setup(tracing.TraceOption(WithTrace()))
 	if len(opt) > 0 {
 		for _, op := range opt {
 			op(_config)
@@ -39,19 +81,21 @@ func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 		return &TracingContext{
 			Path:      req.URL.Path,
 			ClientIP:  tracing.ClientIP(req),
-			RequestID: _config.GetRequestId(req),
-			Service:   tracing.Service,
+			RequestID: _config.GetRequestId(ctx, req),
+			Service:   tracing.Service(),
 		}
 	}
 }
 
-func WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
-	value := ctx.Value(tracing.Key)
-	if value != nil {
-		tc := value.(tracing.Tracing)
-		event = tc.WithTrace(ctx, event)
+func WithTrace() tracing.TraceFunc {
+	return func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
+		value := ctx.Value(tracing.Key)
+		if value != nil {
+			tc := value.(tracing.Tracing)
+			event = tc.WithTrace(ctx, event)
+		}
+		return event
 	}
-	return event
 }
 
 type TracingContext struct {
@@ -94,16 +138,4 @@ func cond(is bool, trueValue string, falseValue string) string {
 		return trueValue
 	}
 	return falseValue
-}
-
-type Config struct {
-	RequestId string
-}
-
-type Option func(c *Config)
-
-func RequestId(header string) Option {
-	return func(c *Config) {
-		c.RequestId = header
-	}
 }

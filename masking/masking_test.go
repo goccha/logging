@@ -3,10 +3,11 @@ package masking
 import (
 	"context"
 	"encoding/json"
-	"github.com/gorilla/schema"
-	"github.com/stretchr/testify/assert"
 	"net/url"
 	"testing"
+
+	"github.com/gorilla/schema"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestProcessor_JsonMask(t *testing.T) {
