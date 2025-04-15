@@ -15,7 +15,7 @@ func dumpHeaders(c *gin.Context) {
 			logger.Str(k, v[0])
 		}
 	}
-	logger.Send()
+	logger.Msg("dumpHeaders")
 }
 
 func TraceRequest(tracer trace.Tracer, dump bool, f tracing.NewFunc) gin.HandlerFunc {
@@ -28,7 +28,7 @@ func TraceRequest(tracer trace.Tracer, dump bool, f tracing.NewFunc) gin.Handler
 		span.SetAttributes(semconv.HTTPURL(c.Request.URL.String()))
 		c.Request = c.Request.WithContext(tracing.With(ctx, c.Request, f))
 		if dump {
-			log.Dump(c.Request.Context(), log.Debug(c.Request.Context())).Send()
+			log.Dump(c.Request.Context(), log.Debug(c.Request.Context())).Msg("dump")
 		}
 		c.Next()
 	}

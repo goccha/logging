@@ -1,9 +1,9 @@
 module github.com/goccha/logging/masking
 
-go 1.18
+go 1.24
 
 require (
-	github.com/gorilla/schema v1.2.0
+	github.com/gorilla/schema v1.4.1
 	github.com/stretchr/testify v1.7.4
 )
 

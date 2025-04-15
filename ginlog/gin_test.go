@@ -56,14 +56,14 @@ func (tc tracingContext) Dump(ctx context.Context, event *zerolog.Event) *zerolo
 }
 
 func TestJsonLogger(t *testing.T) {
-	tracing.Setup(func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
+	tracing.Setup(tracing.TraceOption(func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
 		value := ctx.Value(tracing.Key())
 		if value != nil {
 			tc := value.(tracing.Tracing)
 			event = tc.WithTrace(ctx, event)
 		}
 		return event
-	})
+	}))
 	reqBody := bytes.NewBufferString("request body")
 	req := httptest.NewRequest(http.MethodGet, "http://dummy.url.com/user", reqBody)
 	req.Header.Add("User-Agent", "Test/0.0.1")
