@@ -2,15 +2,17 @@ package tracing
 
 import (
 	"context"
-	"github.com/goccha/http-constants/pkg/headers"
-	"github.com/goccha/http-constants/pkg/headers/forwarded"
-	"github.com/rs/zerolog"
-	"net"
 	"net/http"
 	"strings"
+
+	"github.com/rs/zerolog"
 )
 
-var Service string
+var serviceName string
+
+func Service() string {
+	return serviceName
+}
 
 type contextKey struct{}
 
@@ -31,32 +33,50 @@ func With(ctx context.Context, req *http.Request, f NewFunc) context.Context {
 	return context.WithValue(ctx, tracingKey, f(ctx, req))
 }
 
-func ClientIP(req *http.Request) (clientIP string) {
-	if v := req.Header.Get(headers.Forwarded); v != "" {
-		clientIP = forwarded.Parse(v).ClientIP()
-	} else if clientIP = strings.TrimSpace(strings.Split(req.Header.Get(headers.XForwardedFor), ",")[0]); clientIP == "" {
-		clientIP = strings.TrimSpace(req.Header.Get(headers.XRealIp))
+func getHeaderValue(req *http.Request, key string) (string, bool) {
+	val := req.Header.Get(key)
+	if val == "" {
+		return "", false
 	}
-	if clientIP != "" {
-		return clientIP
+	return strings.TrimSpace(strings.Split(val, ",")[0]), true
+}
+
+type Option func()
+
+func ServiceName(name string) Option {
+	return func() {
+		serviceName = name
 	}
-	if ip, _, err := net.SplitHostPort(strings.TrimSpace(req.RemoteAddr)); err != nil && ip != "" {
-		return ip
+}
+
+func TraceOption(f1 TraceFunc, f ...TraceFunc) Option {
+	return func() {
+		traceFunc = append([]TraceFunc{f1}, f...)
 	}
-	return req.Header.Get(headers.XEnvoyExternalAddress)
+}
+
+func ClientIP(req *http.Request) string {
+	for _, key := range _ipHeaders {
+		if val, ok := key(req); ok {
+			return val
+		}
+	}
+	return ""
 }
 
 type TraceFunc func(ctx context.Context, event *zerolog.Event) *zerolog.Event
 
-var traceFunc TraceFunc
+var traceFunc []TraceFunc
 
-func Setup(f TraceFunc) {
-	traceFunc = f
+func Setup(opt ...Option) {
+	for _, o := range opt {
+		o()
+	}
 }
 
 func WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
-	if traceFunc != nil {
-		event = traceFunc(ctx, event)
+	for _, tf := range traceFunc {
+		event = tf(ctx, event)
 	}
 	return event
 }
