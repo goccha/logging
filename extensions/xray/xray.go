@@ -14,11 +14,10 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
-	"google.golang.org/grpc"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
-func WithLogGroupARNs(logGroupARNs ...string) tracers.Option {
+func WithLogGroupARNs(logGroupARNs ...string) tracers.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logGroupARNs) > 0 {
 			attrs = append(attrs, semconv.AWSLogGroupARNsKey.StringSlice(logGroupARNs))
@@ -27,7 +26,7 @@ func WithLogGroupARNs(logGroupARNs ...string) tracers.Option {
 	}
 }
 
-func WithLogGroupNames(logGroupNames ...string) tracers.Option {
+func WithLogGroupNames(logGroupNames ...string) tracers.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logGroupNames) > 0 {
 			attrs = append(attrs, semconv.AWSLogGroupNamesKey.StringSlice(logGroupNames))
@@ -36,7 +35,7 @@ func WithLogGroupNames(logGroupNames ...string) tracers.Option {
 	}
 }
 
-func WithLogStreamARNsKey(logStreamARNs ...string) tracers.Option {
+func WithLogStreamARNsKey(logStreamARNs ...string) tracers.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logStreamARNs) > 0 {
 			attrs = append(attrs, semconv.AWSLogStreamARNsKey.StringSlice(logStreamARNs))
@@ -45,7 +44,7 @@ func WithLogStreamARNsKey(logStreamARNs ...string) tracers.Option {
 	}
 }
 
-func WithLogStreamNames(logStreamNames ...string) tracers.Option {
+func WithLogStreamNames(logStreamNames ...string) tracers.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logStreamNames) > 0 {
 			attrs = append(attrs, semconv.AWSLogStreamNamesKey.StringSlice(logStreamNames))
@@ -54,23 +53,54 @@ func WithLogStreamNames(logStreamNames ...string) tracers.Option {
 	}
 }
 
-func Attributes(opt ...tracers.Option) []attribute.KeyValue {
-	attrs := make([]attribute.KeyValue, 0, 4)
-	attrs = append(attrs, semconv.CloudProviderAWS)
-	region := envar.Get("AWS_REGION,AWS_DEFAULT_REGION").String("ap-northeast-1")
-	attrs = append(attrs, semconv.CloudRegion(region))
-	execEnv := envar.String("AWS_EXECUTION_ENV")
-	if strings.HasPrefix(execEnv, "AWS_Lambda_") {
-		attrs = append(attrs, semconv.CloudPlatformAWSLambda)
-	} else if strings.Contains(execEnv, "_ECS_") {
-		attrs = append(attrs, semconv.CloudPlatformAWSECS)
+func WithIDGenerator() tracers.TracerProviderOption {
+	return func(ctx context.Context) (sdktrace.TracerProviderOption, error) {
+		return sdktrace.WithIDGenerator(xray.NewIDGenerator()), nil
 	}
-	for _, o := range opt {
-		attrs = o(attrs)
-	}
-	return attrs
 }
 
+func WithResource(attr ...attribute.KeyValue) tracers.TracerProviderOption {
+	return func(ctx context.Context) (sdktrace.TracerProviderOption, error) {
+		attrs := make([]attribute.KeyValue, 0, 3+len(attr))
+		attrs = append(attrs, semconv.CloudProviderAWS)
+		region := envar.Get("AWS_REGION,AWS_DEFAULT_REGION").String("ap-northeast-1")
+		attrs = append(attrs, semconv.CloudRegion(region))
+		attrs = append(attrs, attr...)
+		execEnv := envar.String("AWS_EXECUTION_ENV")
+		if strings.HasPrefix(execEnv, "AWS_Lambda_") {
+			attrs = append(attrs, semconv.CloudPlatformAWSLambda)
+			rsc, err := resource.New(ctx,
+				resource.WithDetectors(lambdadetector.NewResourceDetector()),
+				resource.WithTelemetrySDK())
+			if err != nil {
+				return nil, err
+			}
+			if len(attrs) > 0 {
+				rsc, err = resource.Merge(rsc, resource.NewWithAttributes(rsc.SchemaURL(), attrs...))
+				if err != nil {
+					return nil, err
+				}
+			}
+			return sdktrace.WithResource(rsc), nil
+		} else if strings.Contains(execEnv, "_ECS_") {
+			attrs = append(attrs, semconv.CloudPlatformAWSECS)
+			rsc, err := resource.New(ctx,
+				resource.WithTelemetrySDK())
+			if err != nil {
+				return nil, err
+			}
+			rsc, err = resource.Merge(rsc, resource.NewWithAttributes(rsc.SchemaURL(), attrs...))
+			if err != nil {
+				return nil, err
+			}
+			return sdktrace.WithResource(rsc), nil
+		}
+		return sdktrace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, attrs...)), nil
+	}
+}
+
+// TracerProviderOptions returns a slice of TracerProviderOption for configuring the OpenTelemetry TracerProvider.
+// Deprecated: use tracers.TracerProviderOptions instead.
 func TracerProviderOptions(ctx context.Context, attrs ...attribute.KeyValue) ([]sdktrace.TracerProviderOption, error) {
 	opts := make([]sdktrace.TracerProviderOption, 0, 4)
 	fraction := envar.Get("TRACE_ID_RATIO_BASE").Float64(math.NaN())
@@ -85,7 +115,7 @@ func TracerProviderOptions(ctx context.Context, attrs ...attribute.KeyValue) ([]
 	}
 	endpoint := envar.Get("OTEL_EXPORTER_OTLP_ENDPOINT").String("0.0.0.0:4317")
 	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithEndpoint(endpoint), otlptracegrpc.WithDialOption(grpc.WithBlock()))
+		otlptracegrpc.WithEndpoint(endpoint))
 	if err != nil {
 		return nil, err
 	}

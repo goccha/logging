@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/goccha/http-constants/pkg/headers"
+	"github.com/goccha/logging/extensions/tracers/tracelog"
 	"github.com/goccha/logging/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/trace"
@@ -19,55 +19,52 @@ const (
 	DatadogVersionKey = "dd.version"
 )
 
-type Option func()
+var _env, _version string
 
-func Env(env string) Option {
-	return func() {
+func Env(env string) tracelog.Option {
+	return func(_ *tracelog.Config) {
 		_env = env
 	}
 }
 
-func Version(version string) Option {
-	return func() {
+func Version(version string) tracelog.Option {
+	return func(_ *tracelog.Config) {
 		_version = version
 	}
 }
 
-func Service(service string) Option {
-	return func() {
-		tracing.Service = service
-	}
-}
-
-func Setup(options ...Option) {
-	tracing.Setup(WithTrace)
+func Setup(options ...tracelog.Option) {
+	config := tracelog.TraceConfig()
 	if len(options) > 0 {
 		for _, opt := range options {
-			opt()
+			opt(config)
 		}
 	}
+	tracing.Setup(tracing.TraceOption(WithTrace(), config.Funcs()...))
 }
-
-var _env, _version string
 
 func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 	return func(ctx context.Context, req *http.Request) tracing.Tracing {
 		return &TracingContext{
 			Path:      req.URL.Path,
 			ClientIP:  tracing.ClientIP(req),
-			RequestID: req.Header.Get(headers.RequestID),
-			Service:   tracing.Service,
+			RequestID: tracelog.TraceConfig().GetRequestId(ctx, req),
+			Service:   tracing.Service(),
+			Env:       _env,
+			Version:   _version,
 		}
 	}
 }
 
-func WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
-	value := ctx.Value(tracing.Key)
-	if value != nil {
-		tc := value.(tracing.Tracing)
-		event = tc.WithTrace(ctx, event)
+func WithTrace() tracing.TraceFunc {
+	return func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
+		value := ctx.Value(tracing.Key)
+		if value != nil {
+			tc := value.(tracing.Tracing)
+			event = tc.WithTrace(ctx, event)
+		}
+		return event
 	}
-	return event
 }
 
 type TracingContext struct {
@@ -75,6 +72,8 @@ type TracingContext struct {
 	ClientIP  string
 	RequestID string
 	Service   string
+	Env       string
+	Version   string
 }
 
 func (tc *TracingContext) Dump(ctx context.Context, log *zerolog.Event) *zerolog.Event {
@@ -100,11 +99,11 @@ func (tc *TracingContext) WithTrace(ctx context.Context, event *zerolog.Event) *
 		if tc.Service != "" {
 			event = event.Str(DatadogServiceKey, tc.Service)
 		}
-		if _env != "" {
-			event = event.Str(DatadogEnvKey, _env)
+		if tc.Env != "" {
+			event = event.Str(DatadogEnvKey, tc.Env)
 		}
-		if _version != "" {
-			event = event.Str(DatadogVersionKey, _version)
+		if tc.Version != "" {
+			event = event.Str(DatadogVersionKey, tc.Version)
 		}
 	}
 	if tc.RequestID != "" {

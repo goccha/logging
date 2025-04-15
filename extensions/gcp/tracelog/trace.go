@@ -19,18 +19,12 @@ const (
 	Sampled   = "logging.googleapis.com/trace_sampled"
 )
 
-func init() {
-	if tracing.Service == "" {
-		tracing.Service = envar.String("GAE_SERVICE", "K_SERVICE")
-	}
-}
-
 var projectID = envar.String("GCP_PROJECT", "GOOGLE_CLOUD_PROJECT")
 
 // Setup
 // Deprecated: cloudtrace/tracelog.Setup instead.
 func Setup() {
-	tracing.Setup(WithTrace)
+	tracing.Setup(tracing.TraceOption(WithTrace()), tracing.ServiceName(envar.String("GAE_SERVICE", "K_SERVICE")))
 }
 
 // New
@@ -41,19 +35,21 @@ func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 			Path:      req.URL.Path,
 			ClientIP:  tracing.ClientIP(req),
 			RequestID: req.Header.Get(headers.RequestID),
-			Service:   tracing.Service,
+			Service:   tracing.Service(),
 			Producer:  envar.Get("GOOGLE_TRACE_PRODUCER").String(""),
 		}
 	}
 }
 
-func WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
-	value := ctx.Value(tracing.Key)
-	if value != nil {
-		tc := value.(tracing.Tracing)
-		event = tc.WithTrace(ctx, event)
+func WithTrace() tracing.TraceFunc {
+	return func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
+		value := ctx.Value(tracing.Key)
+		if value != nil {
+			tc := value.(tracing.Tracing)
+			event = tc.WithTrace(ctx, event)
+		}
+		return event
 	}
-	return event
 }
 
 type TracingContext struct {

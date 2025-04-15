@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/goccha/envar"
-	"github.com/goccha/http-constants/pkg/headers"
+	"github.com/goccha/logging/extensions/tracers/tracelog"
 	"github.com/goccha/logging/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/trace"
@@ -20,36 +20,41 @@ const (
 )
 
 func init() {
-	if tracing.Service == "" {
-		tracing.Service = envar.String("GAE_SERVICE", "K_SERVICE")
-	}
+	tracing.Setup(tracing.ServiceName(envar.String("GAE_SERVICE", "K_SERVICE")))
 }
 
 var projectID = envar.String("GCP_PROJECT", "GOOGLE_CLOUD_PROJECT")
 
-func Setup() {
-	tracing.Setup(WithTrace)
+func Setup(opt ...tracelog.Option) {
+	config := tracelog.TraceConfig()
+	for _, op := range opt {
+		op(config)
+	}
+	tracing.Setup(tracing.TraceOption(WithTrace(), config.Funcs()...))
 }
 
 func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 	return func(ctx context.Context, req *http.Request) tracing.Tracing {
+		config := tracelog.TraceConfig()
 		return &TracingContext{
 			Path:      req.URL.Path,
 			ClientIP:  tracing.ClientIP(req),
-			RequestID: req.Header.Get(headers.RequestID),
-			Service:   tracing.Service,
+			RequestID: config.GetRequestId(ctx, req),
+			Service:   tracing.Service(),
 			Producer:  envar.Get("GOOGLE_TRACE_PRODUCER").String(""),
 		}
 	}
 }
 
-func WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
-	value := ctx.Value(tracing.Key)
-	if value != nil {
-		tc := value.(tracing.Tracing)
-		event = tc.WithTrace(ctx, event)
+func WithTrace() tracing.TraceFunc {
+	return func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
+		value := ctx.Value(tracing.Key)
+		if value != nil {
+			tc := value.(tracing.Tracing)
+			event = tc.WithTrace(ctx, event)
+		}
+		return event
 	}
-	return event
 }
 
 type TracingContext struct {

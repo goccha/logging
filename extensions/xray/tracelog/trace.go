@@ -9,6 +9,7 @@ import (
 	"github.com/awslabs/aws-lambda-go-api-proxy/core"
 	"github.com/goccha/envar"
 	"github.com/goccha/http-constants/pkg/headers"
+	"github.com/goccha/logging/extensions/tracers/tracelog"
 	"github.com/goccha/logging/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/trace"
@@ -21,15 +22,16 @@ const (
 )
 
 var awsEnv = envar.String("AWS_EXECUTION_ENV")
-var _config = &Config{}
+var isLambda = strings.HasPrefix(awsEnv, "AWS_Lambda_")
 
-func Setup(opt ...Option) {
-	tracing.Setup(WithTrace)
+func Setup(opt ...tracelog.Option) {
+	config := tracelog.TraceConfig()
 	if len(opt) > 0 {
 		for _, op := range opt {
-			op(_config)
+			op(config)
 		}
 	}
+	tracing.Setup(tracing.TraceOption(WithTrace(), config.Funcs()...))
 }
 
 func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
@@ -38,18 +40,23 @@ func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 			Path:      req.URL.Path,
 			ClientIP:  tracing.ClientIP(req),
 			RequestID: getRequestId(ctx, req),
-			Service:   tracing.Service,
+			Service:   tracing.Service(),
 		}
 	}
 }
 
+func RequestIdOption() tracelog.RequestIdFunc {
+	return getRequestId
+}
+
 func getRequestId(ctx context.Context, req *http.Request) string {
 	var requestId string
-	if strings.HasPrefix(awsEnv, "AWS_Lambda_") { // Lambda環境の場合
+	if isLambda { // Lambda環境の場合
 		requestId = getLambdaRequestId(ctx)
 	} else {
-		if _config.RequestId != "" {
-			requestId = req.Header.Get(_config.RequestId)
+		config := tracelog.TraceConfig()
+		if config.RequestIdHeader != "" {
+			requestId = req.Header.Get(config.RequestIdHeader)
 		}
 	}
 	if requestId == "" {
@@ -78,13 +85,15 @@ func getLambdaRequestId(ctx context.Context) string {
 	return requestId
 }
 
-func WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
-	value := ctx.Value(tracing.Key())
-	if value != nil {
-		tc := value.(tracing.Tracing)
-		event = tc.WithTrace(ctx, event)
+func WithTrace() tracing.TraceFunc {
+	return func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
+		value := ctx.Value(tracing.Key())
+		if value != nil {
+			tc := value.(tracing.Tracing)
+			event = tc.WithTrace(ctx, event)
+		}
+		return event
 	}
-	return event
 }
 
 type TracingContext struct {
@@ -127,23 +136,4 @@ func cond(is bool, trueValue string, falseValue string) string {
 		return trueValue
 	}
 	return falseValue
-}
-
-type Config struct {
-	RequestId     string
-	LogGroupNames []string
-}
-
-type Option func(c *Config)
-
-func RequestId(header string) Option {
-	return func(c *Config) {
-		c.RequestId = header
-	}
-}
-
-func LogGroupNames(names ...string) Option {
-	return func(c *Config) {
-		c.LogGroupNames = names
-	}
 }
