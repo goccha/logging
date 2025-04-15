@@ -5,7 +5,7 @@ go 1.24
 require (
 	github.com/goccha/envar v0.3.6
 	github.com/goccha/http-constants v0.1.2
-	github.com/goccha/logging v0.1.7
+	github.com/goccha/logging v0.2.0
 	github.com/rs/zerolog v1.34.0
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.35.0
@@ -43,5 +43,3 @@ require (
 	google.golang.org/grpc v1.71.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
-
-replace github.com/goccha/logging => ../../.
