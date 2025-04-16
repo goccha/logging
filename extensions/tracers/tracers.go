@@ -46,6 +46,14 @@ func WithVersion(version string) KeyValueOption {
 	}
 }
 
+func Attributes(options ...KeyValueOption) []attribute.KeyValue {
+	attrs := make([]attribute.KeyValue, 0, 4)
+	for _, option := range options {
+		attrs = option(attrs)
+	}
+	return attrs
+}
+
 type TracerProviderOption func(ctx context.Context) (sdktrace.TracerProviderOption, error)
 
 func WithSampler() TracerProviderOption {
