@@ -43,13 +43,25 @@ func (h IpHeaders) Get(req *http.Request) (string, bool) {
 }
 func (h IpHeaders) Prepend(header IpHeader) IpHeaders {
 	list := make(IpHeaders, len(h)+1)
-	list = append(list, header)
-	return append(list, h...)
+	for i := range list {
+		if i == 0 {
+			list[i] = header
+		} else {
+			list[i] = h[i-1]
+		}
+	}
+	return list
 }
 func (h IpHeaders) Append(header IpHeader) IpHeaders {
 	list := make(IpHeaders, len(h)+1)
-	list = append(list, h...)
-	return append(list, header)
+	for i := range list {
+		if i == len(list)-1 {
+			list[i] = header
+		} else {
+			list[i] = h[i]
+		}
+	}
+	return list
 }
 
 func Forwarded() IpHeader {
