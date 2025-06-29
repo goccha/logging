@@ -2,6 +2,7 @@ package masking
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/url"
 	"testing"
@@ -56,7 +57,7 @@ func TestProcessor_JsonMask(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	data, err := New("password", "name", "age", "phone", "address", "introducers").Run(ctx, Json(body))
+	data, err := New("password", "name", "age", "phone", "address", "introducers").Json(ctx, body)
 	assert.NoError(t, err)
 
 	err = json.Unmarshal(data, body)
@@ -91,7 +92,7 @@ func TestProcessor_JsonMask(t *testing.T) {
 func TestJson(t *testing.T) {
 	str := "{\"username\":\"test_user\",\"password\":\"qwerty\"}"
 	ctx := context.Background()
-	data, err := New("password").Run(ctx, Json(str))
+	data, err := New("password").Json(ctx, str)
 	assert.NoError(t, err)
 	body := map[string]interface{}{}
 	err = json.Unmarshal(data, &body)
@@ -99,7 +100,7 @@ func TestJson(t *testing.T) {
 	assert.Equal(t, MaskValue, body["password"])
 
 	str = ""
-	data, err = New("password").Run(ctx, Json(str))
+	data, err = New("password").Json(ctx, str)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(data))
 }
@@ -121,11 +122,10 @@ func TestProcessor_FormMask(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx := context.Background()
-	data, err := New("password").Run(ctx, Form(body))
+	data, err := New("password").Form(ctx, base64.URLEncoding.EncodeToString([]byte(body.Encode())))
 	assert.NoError(t, err)
 
-	form := url.Values{}
-	err = json.Unmarshal(data, &form)
+	form, err := url.ParseQuery(string(data))
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(form["password"]))
 	assert.Equal(t, MaskValue, form["password"][0])
@@ -134,16 +134,15 @@ func TestProcessor_FormMask(t *testing.T) {
 func TestForm(t *testing.T) {
 	str := "username=test_user&password=qwerty"
 	ctx := context.Background()
-	data, err := New("password").Run(ctx, Form(str))
+	data, err := New("password").Form(ctx, base64.URLEncoding.EncodeToString([]byte(str)))
 	assert.NoError(t, err)
-	form := url.Values{}
-	err = json.Unmarshal(data, &form)
+	form, err := url.ParseQuery(string(data))
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(form["password"]))
 	assert.Equal(t, MaskValue, form["password"][0])
 
 	str = ""
-	data, err = New("password").Run(ctx, Form(str))
+	data, err = New("password").Form(ctx, str)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(data))
 }

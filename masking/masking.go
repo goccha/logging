@@ -2,9 +2,12 @@ package masking
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/url"
 	"strings"
+
+	"github.com/gorilla/schema"
 )
 
 var MaskValue = "*****"
@@ -28,60 +31,109 @@ func (b *Processor) Add(key string, keys ...string) *Processor {
 
 var empty []byte
 
-func (b *Processor) Run(ctx context.Context, f Unmarshal) ([]byte, error) {
-	data, err := f()
-	if err != nil {
-		return nil, err
+// Json converts a JSON string or struct to JSON bytes.
+func (b *Processor) Json(ctx context.Context, v any) (data []byte, err error) {
+	var str string
+	if _, ok := v.([]byte); ok {
+		str = string(v.([]byte))
+	} else if _, ok := v.(string); ok {
+		str = v.(string)
+	} else {
+		if data, err = json.Marshal(v); err != nil {
+			return nil, err
+		}
+		str = string(data)
 	}
-	if len(data) == 0 {
+	if len(str) == 0 {
 		return empty, nil
 	}
-	body := make(map[string]interface{})
-	if err = json.Unmarshal(data, &body); err != nil {
-		return data, err
-	}
-	body = b.masking(ctx, body)
-	return json.Marshal(body)
-}
-
-type Unmarshal func() ([]byte, error)
-
-func Raw(data []byte) Unmarshal {
-	return func() ([]byte, error) {
+	if str[0] == '[' { // JSON array
+		body := make([]map[string]interface{}, 0)
+		if err = json.Unmarshal([]byte(str), &body); err != nil {
+			return data, err
+		}
+		if data, err = json.Marshal(maskingArray(ctx, body, b.keys)); err != nil {
+			return data, err
+		}
+		return data, nil
+	} else {
+		body := make(map[string]interface{})
+		if err = json.Unmarshal([]byte(str), &body); err != nil {
+			return data, err
+		}
+		if data, err = json.Marshal(masking(ctx, body, b.keys)); err != nil {
+			return data, err
+		}
 		return data, nil
 	}
 }
 
-func Json(v interface{}) Unmarshal {
-	return func() (data []byte, err error) {
-		if str, ok := v.(string); ok {
-			return []byte(str), nil
-		}
-		return json.Marshal(v)
-	}
-}
+var encoder = schema.NewEncoder()
 
-func Form(v interface{}) Unmarshal {
-	return func() (data []byte, err error) {
-		switch val := v.(type) {
-		case string:
-			if len(val) == 0 {
-				return empty, nil
-			}
-			var form url.Values
-			if form, err = url.ParseQuery(val); err != nil {
-				return
-			}
-			return json.Marshal(form)
-		default:
-			return json.Marshal(val)
+// Form converts a form-encoded string to URL-encoded bytes, masking sensitive values.
+func (b *Processor) Form(ctx context.Context, v any) (data []byte, err error) {
+	var form url.Values
+	var str string
+	switch val := v.(type) {
+	case []byte:
+		str = string(val)
+	case string:
+		str = val
+	default:
+		if err = encoder.Encode(v, form); err != nil {
+			return nil, err
 		}
 	}
+	if len(form) == 0 {
+		if len(str) == 0 {
+			return empty, nil
+		}
+		if bin, err := base64.URLEncoding.DecodeString(str); err != nil {
+			return nil, err
+		} else {
+			str = string(bin)
+		}
+		if form, err = url.ParseQuery(str); err != nil {
+			return
+		}
+	}
+	return []byte(maskingForm(ctx, form, b.keys).Encode()), nil
 }
 
-func (b *Processor) masking(ctx context.Context, body map[string]interface{}) map[string]interface{} {
+// maskingForm processes a form-encoded body and masks values based on the keys provided.
+func maskingForm(ctx context.Context, body url.Values, keys []string) url.Values {
 	for k, v := range body {
-		if contains(b.keys, k) {
+		for _, s := range keys {
+			if _, ok := body[s]; ok { // Exact match
+				for i, val := range v {
+					if val != "" {
+						body[k][i] = MaskValue
+					}
+				}
+			} else if strings.EqualFold(k, s) { // Case-insensitive match
+				for i, val := range v {
+					if val != "" {
+						body[k][i] = MaskValue
+					}
+				}
+			}
+		}
+	}
+	return body
+}
+
+// maskingArray processes an array of maps and masks values based on the keys provided.
+func maskingArray(ctx context.Context, body []map[string]interface{}, keys []string) []map[string]interface{} {
+	for i, item := range body {
+		body[i] = masking(ctx, item, keys)
+	}
+	return body
+}
+
+// masking processes the map and masks values based on the keys provided.
+func masking(ctx context.Context, body map[string]interface{}, keys []string) map[string]interface{} {
+	for k, v := range body {
+		if contains(keys, k) {
 			switch val := v.(type) {
 			case string:
 				if val != "" {
@@ -108,12 +160,12 @@ func (b *Processor) masking(ctx context.Context, body map[string]interface{}) ma
 		} else {
 			switch val := v.(type) {
 			case map[string]interface{}:
-				body[k] = b.masking(ctx, val)
+				body[k] = masking(ctx, val, keys)
 			case []interface{}:
 				for i, av := range val {
 					switch iv := av.(type) {
 					case map[string]interface{}:
-						val[i] = b.masking(ctx, iv)
+						val[i] = masking(ctx, iv, keys)
 					}
 				}
 			}
