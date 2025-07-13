@@ -19,6 +19,7 @@ const (
 type Config struct {
 	RequestIdHeader string
 	RequestIdFunc
+	tracing.NewFunc
 	funcs []tracing.TraceFunc
 }
 
@@ -67,6 +68,12 @@ func WithTraceFuncs(opt ...tracing.TraceFunc) Option {
 	}
 }
 
+func WithNewFunc(f tracing.NewFunc) Option {
+	return func(c *Config) {
+		c.NewFunc = f
+	}
+}
+
 func Setup(opt ...Option) {
 	tracing.Setup(tracing.TraceOption(WithTrace()))
 	if len(opt) > 0 {
@@ -78,6 +85,9 @@ func Setup(opt ...Option) {
 
 func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 	return func(ctx context.Context, req *http.Request) tracing.Tracing {
+		if _config.NewFunc != nil {
+			return _config.NewFunc(ctx, req)
+		}
 		return &TracingContext{
 			Path:      req.URL.Path,
 			ClientIP:  tracing.ClientIP(req),
