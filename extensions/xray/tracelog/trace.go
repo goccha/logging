@@ -34,6 +34,8 @@ func Setup(opt ...tracelog.Option) {
 	tracing.Setup(tracing.TraceOption(WithTrace(), config.Funcs()...))
 }
 
+// New creates a new tracing context for HTTP requests.
+// tracing.NewFunc is used to create a new tracing context based on the incoming HTTP request.
 func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 	return func(ctx context.Context, req *http.Request) tracing.Tracing {
 		return &TracingContext{
@@ -45,7 +47,7 @@ func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 	}
 }
 
-func RequestIdOption() tracelog.RequestIdFunc {
+func AwsRequestId() tracelog.RequestIdFunc {
 	return getRequestId
 }
 
@@ -89,11 +91,22 @@ func WithTrace() tracing.TraceFunc {
 	return func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
 		value := ctx.Value(tracing.Key())
 		if value != nil {
-			tc := value.(tracing.Tracing)
-			event = tc.WithTrace(ctx, event)
+			if tc, ok := value.(tracing.Tracing); ok {
+				event = tc.WithTrace(ctx, event)
+			}
 		}
 		return event
 	}
+}
+
+func Context(ctx context.Context) *TracingContext {
+	value := ctx.Value(tracing.Key())
+	if value != nil {
+		if tc, ok := value.(*TracingContext); ok {
+			return tc
+		}
+	}
+	return nil
 }
 
 type TracingContext struct {
@@ -104,12 +117,9 @@ type TracingContext struct {
 }
 
 func (tc *TracingContext) Dump(ctx context.Context, log *zerolog.Event) *zerolog.Event {
-	span := trace.SpanFromContext(ctx)
-	if span != nil {
-		spanCtx := span.SpanContext()
-		log = log.Str("trace_id", spanCtx.TraceID().String()).Str("span_id", spanCtx.SpanID().String()).
-			Str("sampled", cond(spanCtx.IsSampled(), "01", "00"))
-	}
+	spanCtx := trace.SpanFromContext(ctx).SpanContext()
+	log = log.Str("trace_id", spanCtx.TraceID().String()).Str("span_id", spanCtx.SpanID().String()).
+		Str("sampled", cond(spanCtx.IsSampled(), "01", "00"))
 	if tc.Service != "" {
 		log = log.Dict("serviceContext", zerolog.Dict().Str("service", tc.Service))
 	}
@@ -118,17 +128,22 @@ func (tc *TracingContext) Dump(ctx context.Context, log *zerolog.Event) *zerolog
 }
 
 func (tc *TracingContext) WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
-	span := trace.SpanFromContext(ctx)
-	if span != nil {
-		spanCtx := span.SpanContext()
-		event = event.Str(Id, spanCtx.TraceID().String()).
-			Str(SpanId, spanCtx.SpanID().String()).
-			Str(Sampled, cond(spanCtx.IsSampled(), "01", "00"))
-	}
+	spanCtx := trace.SpanFromContext(ctx).SpanContext()
+	event = event.Str(Id, xrayTraceId(spanCtx.TraceID().String())).
+		Str(SpanId, spanCtx.SpanID().String()).
+		Str(Sampled, cond(spanCtx.IsSampled(), "01", "00"))
 	if tc.RequestID != "" {
 		event = event.Str("request_id", tc.RequestID)
 	}
 	return event
+}
+
+// xrayTraceId converts a trace ID to the format used by AWS X-Ray.
+func xrayTraceId(traceId string) string {
+	if len(traceId) < 16 {
+		return traceId // 16文字未満の場合はそのまま返す
+	}
+	return "1-" + traceId[0:8] + "-" + traceId[8:]
 }
 
 func cond(is bool, trueValue string, falseValue string) string {
