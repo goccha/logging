@@ -129,7 +129,7 @@ func (tc *TracingContext) Dump(ctx context.Context, log *zerolog.Event) *zerolog
 
 func (tc *TracingContext) WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
 	spanCtx := trace.SpanFromContext(ctx).SpanContext()
-	event = event.Str(Id, xrayTraceId(spanCtx.TraceID().String())).
+	event = event.Str(Id, XrayFormat(spanCtx.TraceID().String())).
 		Str(SpanId, spanCtx.SpanID().String()).
 		Str(Sampled, cond(spanCtx.IsSampled(), "01", "00"))
 	if tc.RequestID != "" {
@@ -138,8 +138,8 @@ func (tc *TracingContext) WithTrace(ctx context.Context, event *zerolog.Event) *
 	return event
 }
 
-// xrayTraceId converts a trace ID to the format used by AWS X-Ray.
-func xrayTraceId(traceId string) string {
+// XrayFormat converts a trace ID to the format used by AWS X-Ray.
+func XrayFormat(traceId string) string {
 	if len(traceId) < 16 {
 		return traceId // 16文字未満の場合はそのまま返す
 	}
