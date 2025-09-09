@@ -29,8 +29,16 @@ type Tracing interface {
 	Dump(ctx context.Context, log *zerolog.Event) *zerolog.Event
 }
 
-func With(ctx context.Context, req *http.Request, f NewFunc) context.Context {
-	return context.WithValue(ctx, tracingKey, f(ctx, req))
+func Value(ctx context.Context) interface{} {
+	value := ctx.Value(tracingKey)
+	if value != nil {
+		return value
+	}
+	return nil
+}
+
+func WithContext(ctx context.Context, tr Tracing) context.Context {
+	return context.WithValue(ctx, tracingKey, tr)
 }
 
 func getHeaderValue(req *http.Request, key string) (string, bool) {
@@ -49,9 +57,14 @@ func ServiceName(name string) Option {
 	}
 }
 
-func TraceOption(f1 TraceFunc, f ...TraceFunc) Option {
+func LogOption(f1 LogFunc, f ...LogFunc) Option {
 	return func() {
-		traceFunc = append([]TraceFunc{f1}, f...)
+		if len(logFunc) == 0 {
+			logFunc = append([]LogFunc{f1}, f...)
+		} else {
+			logFunc = append(logFunc, f1)
+			logFunc = append(logFunc, f...)
+		}
 	}
 }
 
@@ -64,9 +77,9 @@ func ClientIP(req *http.Request) string {
 	return ""
 }
 
-type TraceFunc func(ctx context.Context, event *zerolog.Event) *zerolog.Event
+type LogFunc func(ctx context.Context, event *zerolog.Event) *zerolog.Event
 
-var traceFunc []TraceFunc
+var logFunc []LogFunc
 
 func Setup(opt ...Option) {
 	for _, o := range opt {
@@ -75,7 +88,7 @@ func Setup(opt ...Option) {
 }
 
 func WithTrace(ctx context.Context, event *zerolog.Event) *zerolog.Event {
-	for _, tf := range traceFunc {
+	for _, tf := range logFunc {
 		event = tf(ctx, event)
 	}
 	return event

@@ -8,10 +8,12 @@ import (
 )
 
 func Dump(ctx context.Context, log *zerolog.Event) *zerolog.Event {
-	value := ctx.Value(tracing.Key)
+	value := tracing.Value(ctx)
 	if value == nil {
 		return log
 	}
-	tc := value.(tracing.Tracing)
-	return tc.Dump(ctx, log)
+	if tc, ok := value.(tracing.Tracing); ok {
+		return tc.Dump(ctx, log)
+	}
+	return log
 }
