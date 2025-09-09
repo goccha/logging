@@ -11,11 +11,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/assert/v2"
-	"github.com/goccha/http-constants/pkg/headers"
 	"github.com/goccha/logging/log"
 	"github.com/goccha/logging/tracing"
+	"github.com/goccha/logging/tracing/tracelog"
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -56,14 +55,15 @@ func (tc tracingContext) Dump(ctx context.Context, event *zerolog.Event) *zerolo
 }
 
 func TestJsonLogger(t *testing.T) {
-	tracing.Setup(tracing.TraceOption(func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
-		value := ctx.Value(tracing.Key())
-		if value != nil {
-			tc := value.(tracing.Tracing)
-			event = tc.WithTrace(ctx, event)
+	tracelog.Setup(tracelog.WithNewFunc(func(ctx context.Context, req *http.Request) tracing.Tracing {
+		return tracingContext{
+			Path:      req.URL.Path,
+			ClientIP:  tracing.ClientIP(req),
+			RequestID: "test-request-id",
 		}
-		return event
 	}))
+	//tracelog.Setup(tracelog.WithNewFunc(tracelog.New()))
+	//tracelog.Setup()
 	reqBody := bytes.NewBufferString("request body")
 	req := httptest.NewRequest(http.MethodGet, "http://dummy.url.com/user", reqBody)
 	req.Header.Add("User-Agent", "Test/0.0.1")
@@ -71,15 +71,8 @@ func TestJsonLogger(t *testing.T) {
 	buf := &bytes.Buffer{}
 	log.SetGlobalOut(buf)
 
-	var tracer = otel.Tracer("github.com/goccha-tracer")
 	router := gin.New()
-	router.Use(TraceRequest(tracer, true, func(ctx context.Context, req *http.Request) tracing.Tracing {
-		return &tracingContext{
-			Path:      req.URL.Path,
-			ClientIP:  tracing.ClientIP(req),
-			RequestID: req.Header.Get(headers.RequestID),
-		}
-	}), AccessLog()).
+	router.Use(TraceRequest(WithDump(true)), AccessLog()).
 		GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})
