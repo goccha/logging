@@ -5,6 +5,7 @@ import (
 	"github.com/goccha/http-constants/pkg/headers"
 	"github.com/goccha/logging/log"
 	"github.com/goccha/logging/tracing"
+	"github.com/goccha/logging/tracing/tracelog"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -19,9 +20,31 @@ func dumpHeaders(c *gin.Context) {
 	logger.Msg("dumpHeaders")
 }
 
-func TraceRequest(tracer trace.Tracer, dump bool, f tracing.NewFunc) gin.HandlerFunc {
+type Option func(o *option)
+
+// WithDump はリクエストヘッダーのダンプを有効または無効にします。
+// デフォルトはfalseです。
+func WithDump(dump bool) Option {
+	return func(o *option) {
+		o.dump = dump
+	}
+}
+
+type option struct {
+	dump bool
+}
+
+func (o *option) apply(options ...Option) *option {
+	for _, opt := range options {
+		opt(o)
+	}
+	return o
+}
+
+func TraceRequest(options ...Option) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if dump {
+		o := new(option).apply(options...)
+		if o.dump {
 			dumpHeaders(c)
 		}
 		ctx := c.Request.Context()
@@ -39,8 +62,8 @@ func TraceRequest(tracer trace.Tracer, dump bool, f tracing.NewFunc) gin.Handler
 		if ua := c.Request.Header.Get(headers.UserAgent); ua != "" {
 			span.SetAttributes(semconv.HTTPUserAgent(ua))
 		}
-		c.Request = c.Request.WithContext(tracing.With(ctx, c.Request, f))
-		if dump {
+		c.Request = c.Request.WithContext(tracelog.WithContext(ctx, c.Request))
+		if o.dump {
 			log.Dump(ctx, log.Debug(ctx)).Msg("dump")
 		}
 		c.Next()
