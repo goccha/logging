@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/goccha/envar"
-	"github.com/goccha/logging/extensions/tracers"
+	"github.com/goccha/logging/tracing"
 	lambdadetector "go.opentelemetry.io/contrib/detectors/aws/lambda"
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel/attribute"
@@ -17,7 +17,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
-func WithLogGroupARNs(logGroupARNs ...string) tracers.KeyValueOption {
+func WithLogGroupARNs(logGroupARNs ...string) tracing.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logGroupARNs) > 0 {
 			attrs = append(attrs, semconv.AWSLogGroupARNsKey.StringSlice(logGroupARNs))
@@ -26,7 +26,7 @@ func WithLogGroupARNs(logGroupARNs ...string) tracers.KeyValueOption {
 	}
 }
 
-func WithLogGroupNames(logGroupNames ...string) tracers.KeyValueOption {
+func WithLogGroupNames(logGroupNames ...string) tracing.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logGroupNames) > 0 {
 			attrs = append(attrs, semconv.AWSLogGroupNamesKey.StringSlice(logGroupNames))
@@ -35,7 +35,7 @@ func WithLogGroupNames(logGroupNames ...string) tracers.KeyValueOption {
 	}
 }
 
-func WithLogStreamARNsKey(logStreamARNs ...string) tracers.KeyValueOption {
+func WithLogStreamARNsKey(logStreamARNs ...string) tracing.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logStreamARNs) > 0 {
 			attrs = append(attrs, semconv.AWSLogStreamARNsKey.StringSlice(logStreamARNs))
@@ -44,7 +44,7 @@ func WithLogStreamARNsKey(logStreamARNs ...string) tracers.KeyValueOption {
 	}
 }
 
-func WithLogStreamNames(logStreamNames ...string) tracers.KeyValueOption {
+func WithLogStreamNames(logStreamNames ...string) tracing.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logStreamNames) > 0 {
 			attrs = append(attrs, semconv.AWSLogStreamNamesKey.StringSlice(logStreamNames))
@@ -53,13 +53,13 @@ func WithLogStreamNames(logStreamNames ...string) tracers.KeyValueOption {
 	}
 }
 
-func WithIDGenerator() tracers.TracerProviderOption {
+func WithIDGenerator() tracing.TracerProviderOption {
 	return func(ctx context.Context) (sdktrace.TracerProviderOption, error) {
 		return sdktrace.WithIDGenerator(xray.NewIDGenerator()), nil
 	}
 }
 
-func WithResource(attr ...attribute.KeyValue) tracers.TracerProviderOption {
+func WithResource(attr ...attribute.KeyValue) tracing.TracerProviderOption {
 	return func(ctx context.Context) (sdktrace.TracerProviderOption, error) {
 		attrs := make([]attribute.KeyValue, 0, 3+len(attr))
 		attrs = append(attrs, semconv.CloudProviderAWS)
