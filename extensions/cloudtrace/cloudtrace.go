@@ -7,7 +7,7 @@ import (
 	detectors "github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp"
 	exporters "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	"github.com/goccha/envar"
-	"github.com/goccha/logging/extensions/tracers"
+	"github.com/goccha/logging/tracing"
 	"go.opentelemetry.io/contrib/detectors/gcp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -16,7 +16,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
-func WithServiceName(name string) tracers.KeyValueOption {
+func WithServiceName(name string) tracing.KeyValueOption {
 	if name == "" {
 		name = envar.String("GAE_SERVICE", "K_SERVICE")
 	}
@@ -25,7 +25,7 @@ func WithServiceName(name string) tracers.KeyValueOption {
 	}
 }
 
-func WithVersion(version string) tracers.KeyValueOption {
+func WithVersion(version string) tracing.KeyValueOption {
 	if version == "" {
 		version = envar.String("K_REVISION")
 	}
@@ -42,7 +42,7 @@ func ProjectId() string {
 	return projectId
 }
 
-func WithExporter(projectId string) tracers.TracerProviderOption {
+func WithExporter(projectId string) tracing.TracerProviderOption {
 	return func(ctx context.Context) (sdktrace.TracerProviderOption, error) {
 		exporter, err := exporters.New(exporters.WithProjectID(projectId))
 		if err != nil {
@@ -52,7 +52,7 @@ func WithExporter(projectId string) tracers.TracerProviderOption {
 	}
 }
 
-func WithResource(attrs ...attribute.KeyValue) tracers.TracerProviderOption {
+func WithResource(attrs ...attribute.KeyValue) tracing.TracerProviderOption {
 	return func(ctx context.Context) (sdktrace.TracerProviderOption, error) {
 		rsc, err := resource.New(ctx,
 			resource.WithDetectors(gcp.NewDetector()),
@@ -71,7 +71,7 @@ func WithResource(attrs ...attribute.KeyValue) tracers.TracerProviderOption {
 }
 
 // TracerProviderOptions returns a slice of TracerProviderOption for configuring the OpenTelemetry TracerProvider.
-// Deprecated: use tracers.TracerProviderOptions instead.
+// Deprecated: use tracing.TracerProviderOptions instead.
 func TracerProviderOptions(ctx context.Context, attrs ...attribute.KeyValue) ([]sdktrace.TracerProviderOption, error) {
 	opts := make([]sdktrace.TracerProviderOption, 0, 4)
 	fraction := envar.Get("TRACE_ID_RATIO_BASE").Float64(math.NaN())
