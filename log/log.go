@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/goccha/logging/tracing"
@@ -47,6 +48,17 @@ func init() {
 
 func SetGlobalOut(w io.Writer) {
 	log.Logger = zerolog.New(w).With().Timestamp().Logger()
+}
+
+func WithLevel(ctx context.Context, level string, defaultLevel ...zerolog.Level) *zerolog.Event {
+	lv, err := zerolog.ParseLevel(level)
+	if err != nil {
+		if len(defaultLevel) == 0 {
+			return log.Trace()
+		}
+		lv = defaultLevel[0]
+	}
+	return tracing.WithTrace(ctx, log.WithLevel(lv)).Str("severity", strings.ToUpper(lv.String()))
 }
 
 var errorLogger zerolog.Logger
