@@ -3,7 +3,7 @@ module github.com/goccha/logging
 go 1.25.0
 
 require (
-	github.com/goccha/envar v0.3.7
+	github.com/goccha/envar v0.3.8
 	github.com/goccha/http-constants v0.1.2
 	github.com/rs/zerolog v1.35.1
 	go.opentelemetry.io/otel v1.44.0

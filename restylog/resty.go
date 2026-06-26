@@ -25,6 +25,12 @@ func SetFormat(format string) {
 	}
 }
 
+var logLevel string
+
+func SetLogLevel(level string) {
+	logLevel = level
+}
+
 var debugFormat = Default
 
 func SetDebug(c *resty.Client, debug bool) *resty.Client {
@@ -41,8 +47,14 @@ func SetDebug(c *resty.Client, debug bool) *resty.Client {
 }
 
 func RequestLogCallback(req *resty.RequestLog) error {
-	body := zerolog.Dict()
-	headers := zerolog.Dict()
+	var event *zerolog.Event
+	if logLevel != "" {
+		event = log.WithLevel(context.TODO(), logLevel).Str("client", "resty")
+	} else {
+		event = log.Debug(context.TODO()).Str("client", "resty")
+	}
+	body := event.CreateDict()
+	headers := body.CreateDict()
 	for k, v := range req.Header {
 		headers.Strs(k, v)
 	}
@@ -52,13 +64,19 @@ func RequestLogCallback(req *resty.RequestLog) error {
 	} else {
 		body.Str("body", req.Body)
 	}
-	log.Debug(context.TODO()).Str("client", "resty").Dict("request", body).Send()
+	event.Dict("request", body).Send()
 	return nil
 }
 
 func ResponseLogCallback(res *resty.ResponseLog) error {
-	body := zerolog.Dict()
-	headers := zerolog.Dict()
+	var event *zerolog.Event
+	if logLevel != "" {
+		event = log.WithLevel(context.TODO(), logLevel).Str("client", "resty")
+	} else {
+		event = log.Debug(context.TODO()).Str("client", "resty")
+	}
+	body := event.CreateDict()
+	headers := body.CreateDict()
 	for k, v := range res.Header {
 		headers.Strs(k, v)
 	}
@@ -68,7 +86,7 @@ func ResponseLogCallback(res *resty.ResponseLog) error {
 	} else {
 		body.Str("body", res.Body)
 	}
-	log.Debug(context.TODO()).Str("client", "resty").Dict("response", body).Send()
+	event.Dict("response", body).Send()
 	return nil
 }
 

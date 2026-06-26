@@ -24,7 +24,7 @@ var projectID = envar.String("GCP_PROJECT", "GOOGLE_CLOUD_PROJECT")
 // Setup
 // Deprecated: cloudtrace/tracelog.Setup instead.
 func Setup() {
-	tracing.Setup(tracing.TraceOption(WithTrace()), tracing.ServiceName(envar.String("GAE_SERVICE", "K_SERVICE")))
+	tracing.Setup(tracing.LogOption(WithTrace()), tracing.ServiceName(envar.String("GAE_SERVICE", "K_SERVICE")))
 }
 
 // New
@@ -41,7 +41,7 @@ func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 	}
 }
 
-func WithTrace() tracing.TraceFunc {
+func WithTrace() tracing.LogFunc {
 	return func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
 		value := ctx.Value(tracing.Key)
 		if value != nil {
@@ -68,7 +68,7 @@ func (tc *TracingContext) Dump(ctx context.Context, log *zerolog.Event) *zerolog
 			Bool("sampled", spanCtx.IsSampled())
 	}
 	if tc.Service != "" {
-		log = log.Dict("serviceContext", zerolog.Dict().Str("service", tc.Service))
+		log = log.Dict("serviceContext", log.CreateDict().Str("service", tc.Service))
 	}
 	return log.Str("client_ip", tc.ClientIP).
 		Str("request_id", tc.RequestID)

@@ -53,6 +53,7 @@ func TraceRequest(options ...Option) gin.HandlerFunc {
 		span.SetAttributes(semconv.HTTPMethod(c.Request.Method))
 		span.SetAttributes(semconv.HTTPTarget(c.Request.URL.Path))
 		span.SetAttributes(semconv.HTTPURL(c.Request.URL.String()))
+		span.SetAttributes(semconv.HTTPRoute(c.FullPath()))
 		if l := c.Request.ContentLength; l > 0 {
 			span.SetAttributes(semconv.HTTPRequestContentLength(int(l)))
 		}
@@ -62,6 +63,7 @@ func TraceRequest(options ...Option) gin.HandlerFunc {
 		if ua := c.Request.Header.Get(headers.UserAgent); ua != "" {
 			span.SetAttributes(semconv.HTTPUserAgent(ua))
 		}
+
 		c.Request = c.Request.WithContext(tracelog.WithContext(ctx, c.Request))
 		if o.dump {
 			log.Dump(ctx, log.Debug(ctx)).Msg("dump")

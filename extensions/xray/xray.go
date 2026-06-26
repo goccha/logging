@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 
+	sampler "github.com/aws-observability/aws-otel-go/samplers/aws/xray"
 	"github.com/goccha/envar"
 	"github.com/goccha/logging/tracing"
 	lambdadetector "go.opentelemetry.io/contrib/detectors/aws/lambda"
@@ -17,6 +18,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
+// WithLogGroupARNs ロググループARNを設定する
 func WithLogGroupARNs(logGroupARNs ...string) tracing.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logGroupARNs) > 0 {
@@ -26,6 +28,7 @@ func WithLogGroupARNs(logGroupARNs ...string) tracing.KeyValueOption {
 	}
 }
 
+// WithLogGroupNames ロググループ名を設定する
 func WithLogGroupNames(logGroupNames ...string) tracing.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logGroupNames) > 0 {
@@ -35,6 +38,7 @@ func WithLogGroupNames(logGroupNames ...string) tracing.KeyValueOption {
 	}
 }
 
+// WithLogStreamARNsKey ログストリームARNを設定する
 func WithLogStreamARNsKey(logStreamARNs ...string) tracing.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logStreamARNs) > 0 {
@@ -44,6 +48,7 @@ func WithLogStreamARNsKey(logStreamARNs ...string) tracing.KeyValueOption {
 	}
 }
 
+// WithLogStreamNames ログストリーム名を設定する
 func WithLogStreamNames(logStreamNames ...string) tracing.KeyValueOption {
 	return func(attrs []attribute.KeyValue) []attribute.KeyValue {
 		if len(logStreamNames) > 0 {
@@ -53,12 +58,34 @@ func WithLogStreamNames(logStreamNames ...string) tracing.KeyValueOption {
 	}
 }
 
+// WithIDGenerator X-Ray ID ジェネレーターを使用する
 func WithIDGenerator() tracing.TracerProviderOption {
 	return func(ctx context.Context) (sdktrace.TracerProviderOption, error) {
 		return sdktrace.WithIDGenerator(xray.NewIDGenerator()), nil
 	}
 }
 
+// WithSampler X-Ray リモートサンプリングを使用する
+// serviceName サービス名
+// cloudPlatform "ec2" / "ecs" / "eks" / "lambda", etc
+// opt sampler.Option
+//
+//	sampler.WithEndpoint(endpoint url.URL)
+//	sampler.WithSamplingRulesPollingInterval(polingInterval time.Duration)
+//	sampler.WithLogger(l logr.Logger)
+func WithSampler(serviceName, cloudPlatform string, opt ...sampler.Option) tracing.TracerProviderOption {
+	return func(ctx context.Context) (sdktrace.TracerProviderOption, error) {
+		s, err := sampler.NewRemoteSampler(ctx, serviceName, cloudPlatform, opt...)
+		if err != nil {
+			return nil, err
+		}
+		return sdktrace.WithSampler(s), nil
+	}
+}
+
+// WithResource リソース属性を設定する
+// AWS Lambda 環境の場合は、Lambda用のリソース検出器を使用する
+// attr 追加の属性
 func WithResource(attr ...attribute.KeyValue) tracing.TracerProviderOption {
 	return func(ctx context.Context) (sdktrace.TracerProviderOption, error) {
 		attrs := make([]attribute.KeyValue, 0, 3+len(attr))
@@ -104,11 +131,11 @@ func WithResource(attr ...attribute.KeyValue) tracing.TracerProviderOption {
 func TracerProviderOptions(ctx context.Context, attrs ...attribute.KeyValue) ([]sdktrace.TracerProviderOption, error) {
 	opts := make([]sdktrace.TracerProviderOption, 0, 4)
 	fraction := envar.Get("TRACE_ID_RATIO_BASE").Float64(math.NaN())
-	sampler := sdktrace.AlwaysSample()
+	s := sdktrace.AlwaysSample()
 	if !math.IsNaN(fraction) {
-		sampler = sdktrace.TraceIDRatioBased(fraction)
+		s = sdktrace.TraceIDRatioBased(fraction)
 	}
-	opts = append(opts, sdktrace.WithSampler(sampler))
+	opts = append(opts, sdktrace.WithSampler(s))
 	opts = append(opts, sdktrace.WithIDGenerator(xray.NewIDGenerator())) // for xray
 	if len(attrs) > 0 {
 		opts = append(opts, sdktrace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, attrs...)))

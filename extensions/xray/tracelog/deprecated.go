@@ -133,7 +133,7 @@ func (tc *TracingContext) Dump(ctx context.Context, log *zerolog.Event) *zerolog
 	log = log.Str("trace_id", spanCtx.TraceID().String()).Str("span_id", spanCtx.SpanID().String()).
 		Str("sampled", cond(spanCtx.IsSampled(), "01", "00"))
 	if tc.Service != "" {
-		log = log.Dict("serviceContext", zerolog.Dict().Str("service", tc.Service))
+		log = log.Dict("serviceContext", log.CreateDict().Str("service", tc.Service))
 	}
 	return log.Str("client_ip", tc.ClientIP).
 		Str("request_id", tc.RequestID)

@@ -38,7 +38,8 @@ func JsonLog(c *gin.Context, f func(c *gin.Context, e *zerolog.Event), filters .
 		}
 		requestUrl = fmt.Sprintf("%s://%s%s", scheme, req.Host, requestUrl)
 	}
-	dict := zerolog.Dict().
+	e := log.EmbedObject(ctx, log.Info(ctx))
+	dict := e.CreateDict().
 		Int("status", c.Writer.Status()).Str("remoteIp", tracing.ClientIP(req)).
 		Str("userAgent", ua).
 		Str("requestMethod", req.Method).Str("requestUrl", requestUrl).
@@ -47,7 +48,7 @@ func JsonLog(c *gin.Context, f func(c *gin.Context, e *zerolog.Event), filters .
 	if f != nil {
 		f(c, dict)
 	}
-	e := log.EmbedObject(ctx, log.Info(ctx).Dict("httpRequest", dict))
+	e.Dict("httpRequest", dict)
 	for _, filter := range filters {
 		if e = filter(c, e); e == nil {
 			return

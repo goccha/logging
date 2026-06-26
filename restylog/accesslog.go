@@ -26,7 +26,7 @@ func WriteLog(ctx context.Context, name string, req *resty.Request, res *resty.R
 		latency = time.Since(req.Time)
 		ev = log.Notice(ctx)
 	}
-	ev.Str("client", name).Dict("httpClient", zerolog.Dict().
+	ev.Str("client", name).Dict("httpClient", ev.CreateDict().
 		Int("status", status).Str("userAgent", ua).
 		Str("requestMethod", req.Method).Str("protocol", req.RawRequest.URL.Scheme).
 		Str("requestHost", req.RawRequest.URL.Host).Str("requestPath", req.RawRequest.URL.Path).
