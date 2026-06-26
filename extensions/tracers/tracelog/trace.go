@@ -20,7 +20,7 @@ type Config struct {
 	RequestIdHeader string
 	RequestIdFunc
 	tracing.NewFunc
-	funcs []tracing.TraceFunc
+	funcs []tracing.LogFunc
 }
 
 type RequestIdFunc func(ctx context.Context, req *http.Request) string
@@ -37,7 +37,7 @@ func (c *Config) GetRequestId(ctx context.Context, req *http.Request) string {
 	return req.Header.Get(headers.RequestID)
 }
 
-func (c *Config) Funcs() []tracing.TraceFunc {
+func (c *Config) Funcs() []tracing.LogFunc {
 	return c.funcs
 }
 
@@ -59,10 +59,10 @@ func WithRequestIdFunc(f RequestIdFunc) Option {
 	}
 }
 
-func WithTraceFuncs(opt ...tracing.TraceFunc) Option {
+func WithTraceFuncs(opt ...tracing.LogFunc) Option {
 	return func(c *Config) {
 		if c.funcs == nil {
-			c.funcs = make([]tracing.TraceFunc, 0, len(opt))
+			c.funcs = make([]tracing.LogFunc, 0, len(opt))
 		}
 		c.funcs = append(c.funcs, opt...)
 	}
@@ -75,7 +75,7 @@ func WithNewFunc(f tracing.NewFunc) Option {
 }
 
 func Setup(opt ...Option) {
-	tracing.Setup(tracing.TraceOption(WithTrace()))
+	tracing.Setup(tracing.LogOption(WithTrace()))
 	if len(opt) > 0 {
 		for _, op := range opt {
 			op(_config)
@@ -97,7 +97,7 @@ func New() func(ctx context.Context, req *http.Request) tracing.Tracing {
 	}
 }
 
-func WithTrace() tracing.TraceFunc {
+func WithTrace() tracing.LogFunc {
 	return func(ctx context.Context, event *zerolog.Event) *zerolog.Event {
 		value := ctx.Value(tracing.Key)
 		if value != nil {
@@ -123,7 +123,7 @@ func (tc *TracingContext) Dump(ctx context.Context, log *zerolog.Event) *zerolog
 			Bool("sampled", spanCtx.IsSampled())
 	}
 	if tc.Service != "" {
-		log = log.Dict("serviceContext", zerolog.Dict().Str("service", tc.Service))
+		log = log.Dict("serviceContext", log.CreateDict().Str("service", tc.Service))
 	}
 	return log.Str("client_ip", tc.ClientIP).
 		Str("request_id", tc.RequestID)

@@ -146,3 +146,24 @@ func TestForm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(data))
 }
+
+func BenchmarkJson(b *testing.B) {
+	type UserPass struct {
+		Username string `schema:"username" json:"username"`
+		Password string `schema:"password" json:"password"`
+		Phone    string `schema:"phone" json:"phone"`
+	}
+	ctx := b.Context()
+	u := &UserPass{
+		Username: "test_user",
+		Password: "qwerty",
+		Phone:    "00-0123-4567",
+	}
+	m := New("password", "phone")
+	b.ResetTimer()
+	for range b.N {
+		if _, err := m.Json(ctx, u); err != nil {
+			b.Error(err)
+		}
+	}
+}

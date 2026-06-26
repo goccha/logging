@@ -22,6 +22,8 @@ github.com/go-playground/validator/v10 v10.30.3 h1:4MU6YkEwx7GbcPJOZxrtbu+QfF3pJ
 github.com/go-playground/validator/v10 v10.30.3/go.mod h1:4Axh7oCNGcoGkqLoE4YWt6n20mcEIsPRlB7vPk3lpyc=
 github.com/goccha/envar v0.3.7 h1:SM2UdY9/sSfzS9fW+tnPw0vJarkqP6tTwj8u9DSh0Hs=
 github.com/goccha/envar v0.3.7/go.mod h1:Ufgf4Yey3lj2G5jkAhePYLfWrFTlN/7f2mMrJuvI2po=
+github.com/goccha/envar v0.3.8 h1:razEvucaqULa4A1Pp1gmHbzfg7DLI67nXjxhtMyNk0k=
+github.com/goccha/envar v0.3.8/go.mod h1:y4uEToDXn4nDdMzRaJzxAB2NmiiV3N1R68IVxxY8U7o=
 github.com/goccha/http-constants v0.1.2 h1:E5O6qPQI2pcTdkD0lvAsWtmb1qG2XPnNW/TDuk4Dk3Y=
 github.com/goccha/http-constants v0.1.2/go.mod h1:w6bx948ND02uGfvg7hE5EVmmRkX9ZvZ9bRZfN4H7kmg=
 github.com/golang/protobuf v1.5.4 h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=
